@@ -14,7 +14,9 @@ import type { InputSource } from './input/types';
 import { SceneView } from './render/scene';
 import { KitchenView } from './render/kitchenView';
 import { PlayerView } from './render/playerView';
-import type { StationModels } from './render/models';
+import { HighlightView } from './render/highlightView';
+import { ItemsView } from './render/itemsView';
+import type { StationModels, ItemModels } from './render/models';
 
 /**
  * Fixed simulation step: 60 logic ticks per second.
@@ -37,6 +39,8 @@ export class Game {
   private readonly sceneView: SceneView;
   private readonly kitchenView: KitchenView;
   private readonly playerView: PlayerView;
+  private readonly highlightView: HighlightView;
+  private readonly itemsView: ItemsView;
 
   private readonly input: InputSource;
 
@@ -51,6 +55,7 @@ export class Game {
     container: HTMLElement,
     input: InputSource,
     models: StationModels,
+    itemModels: ItemModels,
   ) {
     this.input = input;
     // Build the renderer from the world: views read the grid to size themselves.
@@ -66,6 +71,18 @@ export class Game {
     );
     this.playerView = new PlayerView(
       this.sceneView.scene,
+      this.world.grid.cols,
+      this.world.grid.rows,
+      itemModels,
+    );
+    this.highlightView = new HighlightView(
+      this.sceneView.scene,
+      this.world.grid.cols,
+      this.world.grid.rows,
+    );
+    this.itemsView = new ItemsView(
+      this.sceneView.scene,
+      itemModels,
       this.world.grid.cols,
       this.world.grid.rows,
     );
@@ -106,6 +123,10 @@ export class Game {
     // is nothing to interpolate yet; if we add smooth motion later, the leftover
     // `this.accumulator / STEP_SECONDS` is the interpolation alpha to pass here.
     this.playerView.sync(this.world.player);
+    // Highlight whatever station the player currently faces (or nothing).
+    this.highlightView.sync(this.world.selectedCell());
+    // Draw items resting on counters (reconciled against the grid).
+    this.itemsView.sync(this.world.grid);
     this.sceneView.render();
 
     this.rafId = requestAnimationFrame(this.frame);

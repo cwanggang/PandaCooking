@@ -30,6 +30,16 @@ export type StationType =
   | 'trash'; // discard items
 
 /**
+ * A carryable item — something the player can hold and put down. Just the raw
+ * carrot for now.
+ *
+ * EXTENSION POINT: add ingredients/plates/pots here (e.g. 'carrotChopped',
+ * 'plate', 'pot'). The item->model map in models.ts is keyed by this, so a new
+ * item forces you to give it a model (or the type-check fails).
+ */
+export type ItemType = 'carrot';
+
+/**
  * The four cardinal directions the player can face/move.
  * Named by compass point so rendering and logic never argue about "up".
  */
@@ -60,9 +70,16 @@ export interface Cell {
    * Which station this cell is, or null for floor. For now this is just the
    * type tag used to color the cell and to dispatch interaction logic.
    *
-   * EXTENSION POINT: when stations gain runtime STATE (the item resting on a
-   * counter, a stove's cooking progress, etc.), this will grow from a bare
-   * StationType into an object like `{ type: StationType; heldItem: Item|null }`.
+   * EXTENSION POINT: when stations gain more runtime STATE (a stove's cooking
+   * progress, etc.), this will grow from a bare StationType into an object like
+   * `{ type: StationType; ... }`.
    */
   station: StationType | null;
+
+  /**
+   * The item resting on this cell, or null if empty. Only counters use this for
+   * now (you can put a carrot down on a counter); other cells stay null. The
+   * renderer reads it to draw items sitting on surfaces.
+   */
+  heldItem: ItemType | null;
 }

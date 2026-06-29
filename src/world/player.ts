@@ -4,7 +4,7 @@
  * `pos` and `facing` and draw a mesh to match.
  */
 
-import type { Facing, GridPos, Cell } from './types';
+import type { Facing, GridPos, Cell, ItemType } from './types';
 import type { Intent } from './intents';
 import type { Grid } from './grid';
 
@@ -30,6 +30,13 @@ const MOVE_INTENT_FACING: Partial<Record<Intent, Facing>> = {
 export class Player {
   pos: GridPos;
   facing: Facing;
+
+  /**
+   * The item the player is carrying, or null when empty-handed. The interaction
+   * logic (world/stations.ts) moves items between this and a counter cell's
+   * heldItem; the renderer draws this in front of the panda.
+   */
+  heldItem: ItemType | null = null;
 
   constructor(spawn: GridPos, facing: Facing = 'south') {
     // Copy the spawn so external layout data can't be mutated by movement.

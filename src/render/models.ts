@@ -16,8 +16,12 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import type { StationType } from '../world/types';
+import type { StationType, ItemType } from '../world/types';
 import { CELL_SIZE } from '../world/coords';
+
+/** Target size (largest dimension, world units) for a carryable item, so a
+ * carrot reads at a sensible scale held in hand or sitting on a counter. */
+const ITEM_SIZE = 0.5;
 
 /**
  * Which glTF file backs each station type. Partial on purpose: stations missing
@@ -34,8 +38,19 @@ const STATION_MODEL_FILES: Partial<Record<StationType, string>> = {
   stove: '/models/stove_single.gltf',
 };
 
+/**
+ * Which glTF file backs each carryable item. Total (not Partial): every ItemType
+ * must have a model, so adding an item in types.ts forces you to supply one here.
+ */
+const ITEM_MODEL_FILES: Record<ItemType, string> = {
+  carrot: '/models/food_ingredient_carrot.gltf',
+};
+
 /** A loaded, normalized prop ready to be cloned once per cell. */
 export type StationModels = Map<StationType, THREE.Object3D>;
+
+/** A loaded, normalized item ready to be cloned (held or placed on a counter). */
+export type ItemModels = Map<ItemType, THREE.Object3D>;
 
 /**
  * Load every mapped station model in parallel, normalize it, and return the
@@ -54,6 +69,28 @@ export async function loadStationModels(): Promise<StationModels> {
     entries.map(async ([station, url]) => {
       const gltf = await loader.loadAsync(url);
       models.set(station, normalize(gltf.scene));
+    }),
+  );
+
+  return models;
+}
+
+/**
+ * Load every item model in parallel, normalize it for carrying/placing, and
+ * return the map. Like loadStationModels but items are smaller and re-seated so
+ * their base sits at y=0 (KayKit authors food meshes centered on their origin,
+ * not resting on it).
+ */
+export async function loadItemModels(): Promise<ItemModels> {
+  const loader = new GLTFLoader();
+  const models: ItemModels = new Map();
+
+  const entries = Object.entries(ITEM_MODEL_FILES) as [ItemType, string][];
+
+  await Promise.all(
+    entries.map(async ([item, url]) => {
+      const gltf = await loader.loadAsync(url);
+      models.set(item, normalizeItem(gltf.scene));
     }),
   );
 
@@ -87,4 +124,34 @@ function normalize(scene: THREE.Object3D): THREE.Object3D {
   });
 
   return scene;
+}
+
+/**
+ * Normalize a carryable item: scale so its largest dimension is ITEM_SIZE, then
+ * re-seat it inside a wrapper group so the item's base sits at the group's
+ * origin (y=0) and it's centered on x/z. Callers then just position the group at
+ * a surface (counter top) or hand point and the item rests correctly — no
+ * per-call offset math. Returns the wrapper.
+ */
+function normalizeItem(scene: THREE.Object3D): THREE.Object3D {
+  const size = new THREE.Vector3();
+  new THREE.Box3().setFromObject(scene).getSize(size);
+
+  const largest = Math.max(size.x, size.y, size.z);
+  if (largest > 0) scene.scale.setScalar(ITEM_SIZE / largest);
+
+  // Recenter on x/z and drop the base to y=0 (food meshes are centered on their
+  // own origin, so min.y is negative before this).
+  const box = new THREE.Box3().setFromObject(scene);
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  scene.position.set(-center.x, -box.min.y, -center.z);
+
+  scene.traverse((obj) => {
+    if (obj instanceof THREE.Mesh) obj.castShadow = true;
+  });
+
+  const wrapper = new THREE.Group();
+  wrapper.add(scene);
+  return wrapper;
 }

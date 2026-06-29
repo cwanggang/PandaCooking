@@ -10,13 +10,21 @@
 
 import * as THREE from 'three';
 import type { Player } from '../world/player';
-import type { Facing } from '../world/types';
+import type { Facing, ItemType } from '../world/types';
+import type { ItemModels } from './models';
 import { gridToWorld } from '../world/coords';
 
 const BODY_RADIUS = 0.3;
 const BODY_LENGTH = 0.5; // cylindrical middle, excluding the rounded caps
 /** Center height so the capsule's base rests on the floor (y=0). */
 const BODY_CENTER_Y = BODY_LENGTH / 2 + BODY_RADIUS;
+
+/**
+ * Where a held item sits in the panda's LOCAL space: out in front (+z, the
+ * facing direction) at roughly hand height. Because the held item is a child of
+ * the panda group, it inherits position + facing automatically.
+ */
+const HELD_ITEM_OFFSET = { x: 0, y: 0.35, z: BODY_RADIUS + 0.2 };
 
 /**
  * Yaw (rotation about +Y) for each facing, so the nose — modeled pointing along
@@ -35,7 +43,19 @@ export class PlayerView {
   private readonly cols: number;
   private readonly rows: number;
 
-  constructor(scene: THREE.Scene, cols: number, rows: number) {
+  /**
+   * One held-item mesh per item type, parked in front of the panda and hidden.
+   * sync() shows the one matching the player's held item (or none). Preloading
+   * them all avoids cloning/disposing as the carried item changes.
+   */
+  private readonly heldItems = new Map<ItemType, THREE.Object3D>();
+
+  constructor(
+    scene: THREE.Scene,
+    cols: number,
+    rows: number,
+    itemModels: ItemModels,
+  ) {
     this.cols = cols;
     this.rows = rows;
     this.root = new THREE.Group();
@@ -59,6 +79,20 @@ export class PlayerView {
     nose.castShadow = true;
     this.root.add(nose);
 
+    // Held-item meshes: clone each item model, seat it in the panda's hands, and
+    // add it hidden. sync() toggles which (if any) is visible.
+    for (const [type, model] of itemModels) {
+      const held = model.clone();
+      held.position.set(
+        HELD_ITEM_OFFSET.x,
+        HELD_ITEM_OFFSET.y,
+        HELD_ITEM_OFFSET.z,
+      );
+      held.visible = false;
+      this.root.add(held);
+      this.heldItems.set(type, held);
+    }
+
     scene.add(this.root);
   }
 
@@ -76,5 +110,10 @@ export class PlayerView {
     );
     this.root.position.set(x, 0, z);
     this.root.rotation.y = FACING_YAW[player.facing];
+
+    // Show only the held item matching what the player carries (or none).
+    for (const [type, mesh] of this.heldItems) {
+      mesh.visible = player.heldItem === type;
+    }
   }
 }

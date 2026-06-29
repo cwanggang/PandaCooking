@@ -12,16 +12,16 @@ import { Player } from './player';
 import { interactWithStation } from './stations';
 import { KITCHEN_LAYOUT, PLAYER_SPAWN } from './layout';
 import type { Intent } from './intents';
-import type { GridPos, StationType } from './types';
+import type { Cell, GridPos, StationType } from './types';
 
 /**
  * What an INTERACT resolved to, so the caller (game.ts) can report it without
- * the model itself doing I/O. `target` is the station kind faced, or 'floor'
- * (faced a walkable tile) or 'out-of-bounds' (faced off the grid edge).
+ * the model itself doing I/O. INTERACT only fires when a station is faced (see
+ * applyIntent), so `target` is always the faced station kind.
  */
 export interface InteractReport {
   pos: GridPos;
-  target: StationType | 'floor' | 'out-of-bounds';
+  target: StationType;
   message: string;
 }
 
@@ -35,31 +35,40 @@ export class World {
   }
 
   /**
+   * The station cell the player is currently facing, or null if it faces floor
+   * or off the grid edge. This is the ONE definition of "what is selected" —
+   * both the INTERACT handler below and the renderer's highlight read it, so
+   * they can never disagree about which station is targeted. Pure: just two
+   * grid lookups, no side effects.
+   */
+  selectedCell(): Cell | null {
+    const cell = this.player.interactTarget(this.grid); // faced cell, may be undefined
+    if (cell === undefined || cell.station === null) return null;
+    return cell;
+  }
+
+  /**
    * Apply one intent. Returns an InteractReport for INTERACT (so the caller can
-   * log/handle it) and null for movement. Centralizing dispatch here keeps the
-   * input and game layers from needing to know the player's internals.
+   * log/handle it) and null for movement or an INTERACT that hit nothing.
+   * Centralizing dispatch here keeps the input and game layers from needing to
+   * know the player's internals.
    *
-   * EXTENSION POINT: when stations exist, INTERACT will mutate the targeted
-   * cell's station state here (pick up / drop / start cooking) instead of just
+   * INTERACT only acts when a station is faced (selectedCell()): facing floor or
+   * off the grid is a no-op. That is the "can only interact with what you face"
+   * rule.
+   *
+   * EXTENSION POINT: this is the seam for pickup/putdown — when a station is
+   * selected, INTERACT will mutate that cell's station state (pick up / drop /
+   * start cooking) based on what the player is holding, instead of just
    * reporting it.
    */
   applyIntent(intent: Intent): InteractReport | null {
     if (intent === 'INTERACT') {
-      const pos = this.player.facingCellPos();
-      const cell = this.player.interactTarget(this.grid);
-
-      if (cell === undefined) {
-        return { pos, target: 'out-of-bounds', message: 'nothing there' };
-      }
-      if (cell.station === null) {
-        return { pos, target: 'floor', message: 'just floor' };
-      }
-      // Dispatch to the faced station's logic (currently just a description).
-      return {
-        pos,
-        target: cell.station,
-        message: interactWithStation(cell.station),
-      };
+      const cell = this.selectedCell();
+      if (cell === null || cell.station === null) return null; // nothing faced
+      const result = interactWithStation(this.player, cell);
+      if (result === null) return null; // interaction did nothing
+      return { pos: cell.pos, target: cell.station, message: result.message };
     }
 
     this.player.applyIntent(intent, this.grid);

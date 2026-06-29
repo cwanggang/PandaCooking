@@ -50,7 +50,13 @@ export class Grid {
 
         if (ch === FLOOR_CHAR) {
           // Floor: walkable, no station.
-          rowCells.push({ type: 'floor', solid: false, pos, station: null });
+          rowCells.push({
+            type: 'floor',
+            solid: false,
+            pos,
+            station: null,
+            heldItem: null,
+          });
           continue;
         }
 
@@ -61,7 +67,13 @@ export class Grid {
         }
         // All stations are solid (block movement). `solid` is precomputed so
         // movement checks stay a single boolean read.
-        rowCells.push({ type: 'station', solid: true, pos, station });
+        rowCells.push({
+          type: 'station',
+          solid: true,
+          pos,
+          station,
+          heldItem: null,
+        });
       }
       cells.push(rowCells);
     }
