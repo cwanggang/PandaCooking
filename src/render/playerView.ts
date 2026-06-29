@@ -45,6 +45,7 @@ export class PlayerView {
       new THREE.MeshStandardMaterial({ color: 0x4aa3ff }),
     );
     body.position.y = BODY_CENTER_Y;
+    body.castShadow = true;
     this.root.add(body);
 
     // Nose: a small cone. Cones are modeled pointing +Y, so rotate +90 deg
@@ -55,6 +56,7 @@ export class PlayerView {
     );
     nose.rotation.x = Math.PI / 2;
     nose.position.set(0, BODY_CENTER_Y, BODY_RADIUS + 0.1);
+    nose.castShadow = true;
     this.root.add(nose);
 
     scene.add(this.root);

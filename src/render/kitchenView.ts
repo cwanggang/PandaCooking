@@ -9,10 +9,27 @@
 
 import * as THREE from 'three';
 import type { Grid } from '../world/grid';
+import type { StationType } from '../world/types';
 import { CELL_SIZE, gridToWorld } from '../world/coords';
 
 /** How tall a counter box stands above the floor (world units). */
-const COUNTER_HEIGHT = 0.8;
+const COUNTER_HEIGHT = 0.5;
+
+/**
+ * The color of each station type. PRESENTATION ONLY — the world model never
+ * sees these; it only knows the StationType. Temporary color-coding until real
+ * models replace the boxes. The map is keyed by every StationType, so adding a
+ * new station forces you to give it a color here (TypeScript will complain).
+ */
+const STATION_COLORS: Record<StationType, number> = {
+  counter: 0xd2b48c, // light tan
+  barrel: 0x8b5a2b, // brown
+  stove: 0xcc3333, // red
+  cuttingBoard: 0xe8923a, // orange
+  plate: 0xffffff, // white
+  delivery: 0x3cb371, // green
+  trash: 0x3a7bd5, // blue
+};
 
 export class KitchenView {
   /** A group holding all kitchen meshes, added to the scene as one unit. */
@@ -34,33 +51,98 @@ export class KitchenView {
       new THREE.MeshStandardMaterial({ color: 0x3b3f4a }),
     );
     floor.position.set(0, 0, 0); // grid is centered on origin (see coords.ts)
+    floor.receiveShadow = true; // counters/player cast shadows onto the floor
     this.root.add(floor);
 
-    // --- Counters: one box per 'counter' cell ----------------------------
-    // Share one geometry + material across all counter boxes; we only vary
-    // each mesh's position. Cheaper and simpler than per-cell geometry.
+    // --- Stations: one box per station cell, colored by type -------------
+    // Geometry is shared across all boxes (same size); only position and color
+    // vary. We cache one material per StationType so the dozen-or-so boxes don't
+    // each allocate their own.
     const counterGeo = new THREE.BoxGeometry(
       CELL_SIZE,
       COUNTER_HEIGHT,
       CELL_SIZE,
     );
-    const counterMat = new THREE.MeshStandardMaterial({ color: 0x9c6b3f });
+    const materials = new Map<StationType, THREE.Material>();
+    const materialFor = (s: StationType): THREE.Material => {
+      let mat = materials.get(s);
+      if (!mat) {
+        mat = new THREE.MeshStandardMaterial({ color: STATION_COLORS[s] });
+        materials.set(s, mat);
+      }
+      return mat;
+    };
 
     grid.forEach((cell) => {
-      if (cell.type !== 'counter') return;
+      if (cell.station === null) return; // floor cells get no box
       const { x, z } = gridToWorld(
         cell.pos.col,
         cell.pos.row,
         grid.cols,
         grid.rows,
       );
-      const box = new THREE.Mesh(counterGeo, counterMat);
+      const box = new THREE.Mesh(counterGeo, materialFor(cell.station));
       // Box is centered on its origin, so lift it by half its height to rest
       // its base on the floor (y=0).
       box.position.set(x, COUNTER_HEIGHT / 2, z);
+      box.castShadow = true; // stations throw shadows...
+      box.receiveShadow = true; // ...and catch the player's/each other's
       this.root.add(box);
     });
 
+    // --- Tile grid overlay (TEMPORARY visualization) ----------------------
+    // Thin white lines outlining each walkable floor tile so we can see the
+    // 5x4 interior. Remove this one line (and buildFloorGrid below) later.
+    this.root.add(this.buildFloorGrid(grid));
+
     scene.add(this.root);
+  }
+
+  /**
+   * Build white grid lines outlining each floor tile. Derived from the bounding
+   * box of the floor cells (not hardcoded), so editing the layout keeps it
+   * correct. TEMPORARY visualization aid — safe to delete later.
+   */
+  private buildFloorGrid(grid: Grid): THREE.LineSegments {
+    // Find the rectangular span of floor cells.
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    grid.forEach((cell) => {
+      if (cell.type !== 'floor') return;
+      minCol = Math.min(minCol, cell.pos.col);
+      maxCol = Math.max(maxCol, cell.pos.col);
+      minRow = Math.min(minRow, cell.pos.row);
+      maxRow = Math.max(maxRow, cell.pos.row);
+    });
+
+    // A cell boundary at index i sits at world coord (i - count/2). (Cell
+    // centers are at i + 0.5 - count/2, so the edge before it is i - count/2.)
+    const xAt = (col: number): number => col - grid.cols / 2;
+    const zAt = (row: number): number => row - grid.rows / 2;
+
+    const y = 0.02; // float just above the floor to avoid z-fighting
+    const points: THREE.Vector3[] = [];
+
+    // Vertical lines (constant x): one at every column boundary, spanning the
+    // full height of the floor region.
+    for (let col = minCol; col <= maxCol + 1; col++) {
+      points.push(new THREE.Vector3(xAt(col), y, zAt(minRow)));
+      points.push(new THREE.Vector3(xAt(col), y, zAt(maxRow + 1)));
+    }
+    // Horizontal lines (constant z): one at every row boundary.
+    for (let row = minRow; row <= maxRow + 1; row++) {
+      points.push(new THREE.Vector3(xAt(minCol), y, zAt(row)));
+      points.push(new THREE.Vector3(xAt(maxCol + 1), y, zAt(row)));
+    }
+
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    // Note: line width is always 1px in WebGL regardless of any setting, so we
+    // keep it simple — plain white lines.
+    return new THREE.LineSegments(
+      geo,
+      new THREE.LineBasicMaterial({ color: 0xffffff }),
+    );
   }
 }

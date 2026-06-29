@@ -4,7 +4,7 @@
  */
 
 import type { Cell, GridPos } from './types';
-import { CHAR_TO_CELL } from './layout';
+import { CHAR_TO_STATION, FLOOR_CHAR } from './layout';
 
 export class Grid {
   readonly cols: number;
@@ -46,18 +46,22 @@ export class Grid {
       const rowCells: Cell[] = [];
       for (let col = 0; col < cols; col++) {
         const ch = tokens[col];
-        const type = CHAR_TO_CELL[ch];
-        if (type === undefined) {
+        const pos = { col, row };
+
+        if (ch === FLOOR_CHAR) {
+          // Floor: walkable, no station.
+          rowCells.push({ type: 'floor', solid: false, pos, station: null });
+          continue;
+        }
+
+        // Anything else must be a known station char.
+        const station = CHAR_TO_STATION[ch];
+        if (station === undefined) {
           throw new Error(`Unknown layout char '${ch}' at (${col},${row}).`);
         }
-        rowCells.push({
-          type,
-          // Only counters block movement today. Precomputed so movement checks
-          // are a boolean read. Future solid station types set this too.
-          solid: type === 'counter',
-          pos: { col, row },
-          station: null,
-        });
+        // All stations are solid (block movement). `solid` is precomputed so
+        // movement checks stay a single boolean read.
+        rowCells.push({ type: 'station', solid: true, pos, station });
       }
       cells.push(rowCells);
     }

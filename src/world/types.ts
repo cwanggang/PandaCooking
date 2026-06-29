@@ -6,15 +6,28 @@
  */
 
 /**
- * What kind of thing occupies a grid cell.
- *
- * EXTENSION POINT: future station types go here. When we add stations we'll
- * likely introduce e.g. `'cuttingBoard' | 'stove' | 'oven' | 'deliveryWindow'`.
- * They will probably all be "solid" (block movement) like a counter, but each
- * will carry its own station state in a separate structure (see Cell.station,
- * stubbed below). For now we only have the two we need.
+ * The coarse kind of a cell: somewhere you can walk, or a solid station.
+ * Every non-floor cell is a station of some StationType (below). If we ever
+ * need a plain solid wall that's NOT a station, it would become a third value.
  */
-export type CellType = 'counter' | 'floor';
+export type CellType = 'floor' | 'station';
+
+/**
+ * Which kind of station a cell is. This drives both its color (render layer)
+ * and its interaction logic (world/stations.ts). All stations are solid.
+ *
+ * EXTENSION POINT: add new stations here (e.g. 'oven', 'sink'). The exhaustive
+ * switch in stations.ts will then force you to give the new one behavior, and
+ * the color map in kitchenView.ts will force you to give it a color.
+ */
+export type StationType =
+  | 'counter' // regular surface — can hold items
+  | 'barrel' // raw-ingredient storage
+  | 'stove' // cooking
+  | 'cuttingBoard' // chopping
+  | 'plate' // clean-plate dispenser
+  | 'delivery' // finished-food drop-off
+  | 'trash'; // discard items
 
 /**
  * The four cardinal directions the player can face/move.
@@ -44,9 +57,12 @@ export interface Cell {
   pos: GridPos;
 
   /**
-   * EXTENSION POINT: station state machine lives here later (held item,
-   * cooking progress, etc.). Null for now; we are not building station
-   * behavior this session.
+   * Which station this cell is, or null for floor. For now this is just the
+   * type tag used to color the cell and to dispatch interaction logic.
+   *
+   * EXTENSION POINT: when stations gain runtime STATE (the item resting on a
+   * counter, a stove's cooking progress, etc.), this will grow from a bare
+   * StationType into an object like `{ type: StationType; heldItem: Item|null }`.
    */
-  station: null;
+  station: StationType | null;
 }

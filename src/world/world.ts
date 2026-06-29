@@ -9,18 +9,20 @@
 
 import { Grid } from './grid';
 import { Player } from './player';
+import { interactWithStation } from './stations';
 import { KITCHEN_LAYOUT, PLAYER_SPAWN } from './layout';
 import type { Intent } from './intents';
-import type { CellType, GridPos } from './types';
+import type { GridPos, StationType } from './types';
 
 /**
  * What an INTERACT resolved to, so the caller (game.ts) can report it without
- * the model itself doing I/O. `type` is 'out-of-bounds' when the player faces
- * off the grid edge.
+ * the model itself doing I/O. `target` is the station kind faced, or 'floor'
+ * (faced a walkable tile) or 'out-of-bounds' (faced off the grid edge).
  */
 export interface InteractReport {
   pos: GridPos;
-  type: CellType | 'out-of-bounds';
+  target: StationType | 'floor' | 'out-of-bounds';
+  message: string;
 }
 
 export class World {
@@ -43,9 +45,21 @@ export class World {
    */
   applyIntent(intent: Intent): InteractReport | null {
     if (intent === 'INTERACT') {
-      const cell = this.player.interactTarget(this.grid);
       const pos = this.player.facingCellPos();
-      return { pos, type: cell ? cell.type : 'out-of-bounds' };
+      const cell = this.player.interactTarget(this.grid);
+
+      if (cell === undefined) {
+        return { pos, target: 'out-of-bounds', message: 'nothing there' };
+      }
+      if (cell.station === null) {
+        return { pos, target: 'floor', message: 'just floor' };
+      }
+      // Dispatch to the faced station's logic (currently just a description).
+      return {
+        pos,
+        target: cell.station,
+        message: interactWithStation(cell.station),
+      };
     }
 
     this.player.applyIntent(intent, this.grid);

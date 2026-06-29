@@ -1,5 +1,5 @@
 /**
- * SceneView: owns the Three.js renderer, the fixed orthographic camera, and the
+ * SceneView: owns the Three.js renderer, the fixed PERSPECTIVE camera, and the
  * lights. It is the only place the camera/renderer are configured. Other render
  * modules add their meshes to `scene` and SceneView draws them.
  *
@@ -9,16 +9,16 @@
 import * as THREE from 'three';
 
 /**
- * Half the world-height the camera shows, in world units. THIS is your zoom
- * knob for an orthographic camera. Our kitchen is 6 cells tall, so a half-height
- * of ~4.5 (=> 9 units visible vertically) frames it with a little margin.
- * Increase to zoom OUT, decrease to zoom IN.
+ * Vertical field of view, in degrees. THIS is the main "zoom" feel for a
+ * perspective camera: smaller fov = more zoomed-in / flatter (less dramatic
+ * perspective), larger fov = wider / stronger foreshortening. 45 is a calm,
+ * natural-looking choice for a tabletop scene.
  */
-const FRUSTUM_HALF_HEIGHT = 4.5;
+const FOV_DEGREES = 45;
 
 export class SceneView {
   readonly scene: THREE.Scene;
-  readonly camera: THREE.OrthographicCamera;
+  readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
 
   constructor(container: HTMLElement) {
@@ -27,42 +27,60 @@ export class SceneView {
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
+    // Enable shadows. PCFSoft gives softer, less jagged shadow edges than the
+    // default hard shadow map — the nicest-looking option without extra cost.
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
 
-    // --- Orthographic camera ---------------------------------------------
-    // An orthographic camera has NO perspective: parallel lines stay parallel
-    // and, crucially, moving the camera closer/farther does NOT change how big
-    // things look (that's set by the frustum planes below). So we get the size
-    // from FRUSTUM_HALF_HEIGHT and the *angle* from the camera position.
+    // --- Perspective camera ----------------------------------------------
+    // Unlike orthographic, a perspective camera DOES foreshorten: the far side
+    // of the kitchen renders smaller than the near side, and distance now
+    // affects how big things look. We frame the 7x6 board by placing the camera
+    // high and back on +z, looking at the origin.
     //
-    // We derive left/right from the aspect ratio so cells stay square on any
-    // window shape: vertical extent is fixed, horizontal scales with aspect.
-    this.camera = new THREE.OrthographicCamera(
-      -FRUSTUM_HALF_HEIGHT, // left   (overwritten in resize())
-      FRUSTUM_HALF_HEIGHT, // right
-      FRUSTUM_HALF_HEIGHT, // top
-      -FRUSTUM_HALF_HEIGHT, // bottom
+    // The fov is the VERTICAL angle; horizontal is derived from the aspect
+    // ratio (set in resize()). On a very narrow window the sides could clip —
+    // acceptable for now; we'd dolly the camera back to fix it later.
+    this.camera = new THREE.PerspectiveCamera(
+      FOV_DEGREES,
+      1, // aspect — real value set in resize()
       0.1, // near
       100, // far
     );
 
-    // Angled bird's-eye / tabletop view. The camera sits above and to the
-    // +z (south) side and looks at the origin, so:
-    //   - it looks toward -z, putting NORTH at the top of the screen,
-    //   - its right is +x, putting EAST to the right.
-    // Position is high+back for a tilt of ~atan(10/8) ~ 51 degrees above the
-    // floor. Distance doesn't affect zoom (ortho) — only this tilt does.
-    this.camera.position.set(0, 10, 8);
+    // Angled bird's-eye / tabletop view. Above and to the +z (south) side,
+    // looking at the origin, so NORTH is at the top of the screen and EAST is
+    // to the right. Elevation is ~atan(10/8.5) ~ 50 degrees above the floor.
+    // Move it higher for more top-down, lower for a more dramatic angle.
+    this.camera.position.set(0, 10, 8.5);
     this.camera.lookAt(0, 0, 0);
 
     // --- Lights -----------------------------------------------------------
-    // Ambient fills shadows so nothing is pure black; directional gives the
-    // boxes a lit side for readable depth.
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-    sun.position.set(5, 12, 6);
-    // SHADOWS LATER: enable renderer.shadowMap, set sun.castShadow + a shadow
-    // camera frustum, and mark meshes cast/receiveShadow. Skipped this session.
+    // Ambient fills shadows so nothing is pure black; directional is the "sun"
+    // that actually casts the shadows.
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+    sun.position.set(6, 14, 6);
+    sun.castShadow = true;
+
+    // A directional light's shadow is rendered through its OWN orthographic
+    // camera. We size that camera's box to just cover the kitchen (~±6 units)
+    // so the limited shadow-map resolution is spent on the area we care about —
+    // too big a box = blocky shadows, too small = shadows clipped at the edges.
+    sun.shadow.camera.left = -6;
+    sun.shadow.camera.right = 6;
+    sun.shadow.camera.top = 6;
+    sun.shadow.camera.bottom = -6;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 40;
+    // Resolution of the shadow map. Higher = crisper shadows, more GPU cost.
+    sun.shadow.mapSize.set(2048, 2048);
+    // Nudges the shadow off the surface to avoid "shadow acne" (self-shadowing
+    // speckles). If you see stripes on the floor, tweak this slightly.
+    sun.shadow.bias = -0.0005;
+
     this.scene.add(sun);
 
     // Size everything to the current window and keep it correct on resize.
@@ -71,20 +89,15 @@ export class SceneView {
   }
 
   /**
-   * Keep the renderer and the ORTHO frustum correct for the window size.
-   * For an orthographic camera, resizing means recomputing left/right (top and
-   * bottom stay fixed at the half-height) so the aspect ratio doesn't squash
-   * the scene, then calling updateProjectionMatrix().
+   * Keep the renderer and the camera correct for the window size. For a
+   * perspective camera this is simpler than ortho: just set the aspect ratio
+   * (width / height) and update the projection matrix.
    */
   private readonly resize = (): void => {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const aspect = w / h;
 
-    this.camera.left = -FRUSTUM_HALF_HEIGHT * aspect;
-    this.camera.right = FRUSTUM_HALF_HEIGHT * aspect;
-    this.camera.top = FRUSTUM_HALF_HEIGHT;
-    this.camera.bottom = -FRUSTUM_HALF_HEIGHT;
+    this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(w, h);

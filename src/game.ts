@@ -107,7 +107,8 @@ export class Game {
           // INTERACT proof-of-life: log the cell the player is facing. This is
           // the only place INTERACT does anything yet (no station logic).
           console.log(
-            `INTERACT -> cell (col ${report.pos.col}, row ${report.pos.row}): ${report.type}`,
+            `INTERACT -> (col ${report.pos.col}, row ${report.pos.row}) ` +
+              `[${report.target}]: ${report.message}`,
           );
         }
       }
