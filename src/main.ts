@@ -9,14 +9,24 @@
 import './style.css';
 import { Game } from './game';
 import { KeyboardInput } from './input/keyboard';
+import { loadStationModels } from './render/models';
 
 const container = document.querySelector<HTMLDivElement>('#app');
 if (!container) throw new Error('#app container not found in index.html');
 
-const input = new KeyboardInput();
-const game = new Game(container, input);
-game.start();
+// Loading the glTF props is async, so the whole bootstrap is: load art first,
+// then build and start the game once the models exist (the views build their
+// meshes synchronously from them).
+async function main(): Promise<void> {
+  const models = await loadStationModels();
 
-console.log(
-  'Panda Cooking running. WASD to move (one cell per press), Space to interact.',
-);
+  const input = new KeyboardInput();
+  const game = new Game(container!, input, models);
+  game.start();
+
+  console.log(
+    'Panda Cooking running. WASD to move (one cell per press), Space to interact.',
+  );
+}
+
+void main();

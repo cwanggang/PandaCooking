@@ -14,6 +14,7 @@ import type { InputSource } from './input/types';
 import { SceneView } from './render/scene';
 import { KitchenView } from './render/kitchenView';
 import { PlayerView } from './render/playerView';
+import type { StationModels } from './render/models';
 
 /**
  * Fixed simulation step: 60 logic ticks per second.
@@ -46,11 +47,23 @@ export class Game {
   /** Intents pulled from input, waiting to be consumed by the next sim step. */
   private pendingIntents: Intent[] = [];
 
-  constructor(container: HTMLElement, input: InputSource) {
+  constructor(
+    container: HTMLElement,
+    input: InputSource,
+    models: StationModels,
+  ) {
     this.input = input;
     // Build the renderer from the world: views read the grid to size themselves.
-    this.sceneView = new SceneView(container);
-    this.kitchenView = new KitchenView(this.world.grid, this.sceneView.scene);
+    this.sceneView = new SceneView(
+      container,
+      this.world.grid.cols,
+      this.world.grid.rows,
+    );
+    this.kitchenView = new KitchenView(
+      this.world.grid,
+      this.sceneView.scene,
+      models,
+    );
     this.playerView = new PlayerView(
       this.sceneView.scene,
       this.world.grid.cols,

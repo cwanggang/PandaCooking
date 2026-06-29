@@ -16,12 +16,31 @@ import * as THREE from 'three';
  */
 const FOV_DEGREES = 45;
 
+/**
+ * Framing reference. The camera position and shadow box below were hand-tuned
+ * for a board whose largest dimension was this many cells. We scale them by the
+ * actual board's span / this value so a bigger or smaller kitchen stays framed
+ * the same way — resizing the layout doesn't require re-tuning the camera.
+ */
+const REFERENCE_SPAN = 7;
+
+/** Camera offset for a REFERENCE_SPAN board; scaled to the real board's span. */
+const REFERENCE_CAMERA = { y: 10, z: 8.5 };
+
+/** Extra world units of shadow coverage beyond the board's half-extent, so
+ * shadows cast outward by the angled sun aren't clipped at the board edge. */
+const SHADOW_MARGIN = 2.5;
+
 export class SceneView {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, cols: number, rows: number) {
+    // The board's largest dimension drives both framing and shadow coverage.
+    const span = Math.max(cols, rows);
+    const frameScale = span / REFERENCE_SPAN;
+
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x20222b);
 
@@ -51,9 +70,14 @@ export class SceneView {
 
     // Angled bird's-eye / tabletop view. Above and to the +z (south) side,
     // looking at the origin, so NORTH is at the top of the screen and EAST is
-    // to the right. Elevation is ~atan(10/8.5) ~ 50 degrees above the floor.
-    // Move it higher for more top-down, lower for a more dramatic angle.
-    this.camera.position.set(0, 10, 8.5);
+    // to the right. The elevation angle (~atan(10/8.5) ~ 50 degrees) is fixed;
+    // we just dolly the camera in/out by frameScale so a larger board fits.
+    // Move REFERENCE_CAMERA.y higher for more top-down, lower for more drama.
+    this.camera.position.set(
+      0,
+      REFERENCE_CAMERA.y * frameScale,
+      REFERENCE_CAMERA.z * frameScale,
+    );
     this.camera.lookAt(0, 0, 0);
 
     // --- Lights -----------------------------------------------------------
@@ -66,13 +90,16 @@ export class SceneView {
     sun.castShadow = true;
 
     // A directional light's shadow is rendered through its OWN orthographic
-    // camera. We size that camera's box to just cover the kitchen (~±6 units)
-    // so the limited shadow-map resolution is spent on the area we care about —
-    // too big a box = blocky shadows, too small = shadows clipped at the edges.
-    sun.shadow.camera.left = -6;
-    sun.shadow.camera.right = 6;
-    sun.shadow.camera.top = 6;
-    sun.shadow.camera.bottom = -6;
+    // camera. We size that camera's box to just cover the kitchen (its
+    // half-extent plus a margin for shadows cast past the edge) so the limited
+    // shadow-map resolution is spent on the area we care about — too big a box =
+    // blocky shadows, too small = shadows clipped at the edges. Derived from the
+    // board span so it tracks the kitchen size.
+    const shadowExtent = span / 2 + SHADOW_MARGIN;
+    sun.shadow.camera.left = -shadowExtent;
+    sun.shadow.camera.right = shadowExtent;
+    sun.shadow.camera.top = shadowExtent;
+    sun.shadow.camera.bottom = -shadowExtent;
     sun.shadow.camera.near = 0.5;
     sun.shadow.camera.far = 40;
     // Resolution of the shadow map. Higher = crisper shadows, more GPU cost.

@@ -1,8 +1,9 @@
 /**
- * KitchenView: turns the world's Grid into meshes — one box per counter cell,
- * plus a floor plane. The kitchen is static, so we build the meshes ONCE in the
- * constructor and never touch them again. This module reads the model and draws;
- * it makes no gameplay decisions.
+ * KitchenView: turns the world's Grid into meshes — a real KayKit prop per
+ * station cell where we have one (see models.ts), a colored placeholder box
+ * otherwise, plus a floor plane. The kitchen is static, so we build the meshes
+ * ONCE in the constructor and never touch them again. This module reads the
+ * model and draws; it makes no gameplay decisions.
  *
  * Every position goes through gridToWorld() so meshes land exactly on cells.
  */
@@ -11,6 +12,7 @@ import * as THREE from 'three';
 import type { Grid } from '../world/grid';
 import type { StationType } from '../world/types';
 import { CELL_SIZE, gridToWorld } from '../world/coords';
+import type { StationModels } from './models';
 
 /** How tall a counter box stands above the floor (world units). */
 const COUNTER_HEIGHT = 0.5;
@@ -35,7 +37,7 @@ export class KitchenView {
   /** A group holding all kitchen meshes, added to the scene as one unit. */
   readonly root: THREE.Group;
 
-  constructor(grid: Grid, scene: THREE.Scene) {
+  constructor(grid: Grid, scene: THREE.Scene, models: StationModels) {
     this.root = new THREE.Group();
 
     // --- Floor: one plane spanning the whole footprint -------------------
@@ -74,13 +76,27 @@ export class KitchenView {
     };
 
     grid.forEach((cell) => {
-      if (cell.station === null) return; // floor cells get no box
+      if (cell.station === null) return; // floor cells get no mesh
       const { x, z } = gridToWorld(
         cell.pos.col,
         cell.pos.row,
         grid.cols,
         grid.rows,
       );
+
+      // Prefer a real KayKit prop; fall back to the colored box for stations
+      // that don't have a model yet. Both are placed by their base on y=0.
+      const model = models.get(cell.station);
+      if (model) {
+        // Clone so every cell of the same station gets its own instance sharing
+        // the model's geometry/materials. Models are normalized with base at
+        // y=0 (see models.ts), so we only set x/z.
+        const prop = model.clone();
+        prop.position.set(x, 0, z);
+        this.root.add(prop);
+        return;
+      }
+
       const box = new THREE.Mesh(counterGeo, materialFor(cell.station));
       // Box is centered on its origin, so lift it by half its height to rest
       // its base on the floor (y=0).
