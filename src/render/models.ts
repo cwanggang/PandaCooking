@@ -24,11 +24,13 @@ import { CELL_SIZE } from '../world/coords';
 const ITEM_SIZE = 0.5;
 
 /**
- * The renderable item atoms: every food plus the plate. The world's `Item`
- * (food | plate-with-contents) is composed from these by itemMesh.ts — a plate
- * mesh is the plate model with its `contents` foods cloned and stacked on top.
+ * The renderable item atoms: every food, the plate, and the two bun halves. The
+ * world's `Item` (food | plate-with-contents) is composed from these by
+ * itemMesh.ts — a plate mesh is the plate model with its `contents` foods cloned
+ * and stacked on top. The bun halves aren't FoodTypes (the world only knows
+ * `bun`); they're presentation-only atoms used to draw an opened bun.
  */
-export type ItemModelType = FoodType | 'plate';
+export type ItemModelType = FoodType | 'plate' | 'bunBottom' | 'bunTop';
 
 /**
  * Which glTF file backs each station type. Partial on purpose: stations missing
@@ -43,6 +45,9 @@ const STATION_MODEL_FILES: Partial<Record<StationType, string>> = {
   counter: '/models/kitchencounter_straight_A.gltf',
   barrel: '/models/crate_carrots.gltf',
   lettuceBarrel: '/models/crate_lettuce.gltf',
+  tomatoBarrel: '/models/crate_tomatoes.gltf',
+  bunBarrel: '/models/crate_buns.gltf',
+  steakBarrel: '/models/crate_steak.gltf',
   stove: '/models/stove_single.gltf',
 };
 
@@ -58,7 +63,17 @@ const ITEM_MODEL_FILES: Record<ItemModelType, string> = {
   lettuce: '/models/food_ingredient_lettuce.gltf',
   lettuceChopped: '/models/food_ingredient_lettuce_chopped.gltf',
   lettucePieces: '/models/food_ingredient_lettuce_slice.gltf',
+  tomato: '/models/food_ingredient_tomato.gltf',
+  tomatoChopped: '/models/food_ingredient_tomato_slice.gltf',
+  tomatoPieces: '/models/food_ingredient_tomato_slices.gltf',
+  bun: '/models/food_ingredient_bun.gltf',
+  steak: '/models/food_ingredient_steak.gltf',
+  steakChopped: '/models/food_ingredient_steak_pieces.gltf',
+  burgerUncooked: '/models/food_ingredient_burger_uncooked.gltf',
+  burgerCooked: '/models/food_ingredient_burger_cooked.gltf',
   plate: '/models/plate.gltf',
+  bunBottom: '/models/food_ingredient_bun_bottom.gltf',
+  bunTop: '/models/food_ingredient_bun_top.gltf',
 };
 
 /**
@@ -71,6 +86,7 @@ const PROP_MODEL_FILES: Record<PropType, { url: string; size: number }> = {
   dishrack: { url: '/models/dishrack_plates.gltf', size: 0.65 },
   cuttingboard: { url: '/models/cuttingboard.gltf', size: 0.85 },
   knife: { url: '/models/knife.gltf', size: 0.45 },
+  pan: { url: '/models/pan_A.gltf', size: 0.8 },
 };
 
 /** A loaded, normalized prop ready to be cloned once per cell. */
@@ -80,7 +96,7 @@ export type StationModels = Map<StationType, THREE.Object3D>;
 export type ItemModels = Map<ItemModelType, THREE.Object3D>;
 
 /** A decorative prop type that rides on top of a station mesh. */
-export type PropType = 'dishrack' | 'cuttingboard' | 'knife';
+export type PropType = 'dishrack' | 'cuttingboard' | 'knife' | 'pan';
 
 /** A loaded, normalized decoration ready to be cloned and seated on a station. */
 export type PropModels = Map<PropType, THREE.Object3D>;

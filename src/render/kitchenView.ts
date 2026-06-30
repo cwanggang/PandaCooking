@@ -38,6 +38,9 @@ const STATION_COLORS: Record<StationType, number> = {
   counter: 0xd2b48c, // light tan
   barrel: 0x8b5a2b, // brown
   lettuceBarrel: 0x4a7c3a, // leafy green (only the box fallback uses this)
+  tomatoBarrel: 0xd6453b, // tomato red (only the box fallback uses this)
+  bunBarrel: 0xc89b5a, // wheat (only the box fallback uses this)
+  steakBarrel: 0x7a2e2e, // maroon (only the box fallback uses this)
   stove: 0xcc3333, // red
   cuttingBoard: 0xe8923a, // orange
   dishrack: 0xd2b48c, // tan (counter-toned; only the box fallback uses this)

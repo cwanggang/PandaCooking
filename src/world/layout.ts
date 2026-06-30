@@ -7,6 +7,9 @@
  *   'C' = counter        (light tan — regular surface, can hold items)
  *   'B' = barrel         (brown   — carrot crate)
  *   'L' = lettuce barrel (green   — lettuce crate)
+ *   'M' = tomato barrel  (red     — tomato crate)
+ *   'U' = bun barrel     (wheat   — burger-bun crate)
+ *   'K' = steak barrel   (maroon  — steak crate)
  *   'S' = stove          (red     — cooking)
  *   'X' = cutting board  (counter — chopping, board + knife on top)
  *   'P' = dish rack      (counter — clean-plate dispenser, plates on top)
@@ -34,9 +37,9 @@ export const KITCHEN_LAYOUT: string[] = [
   'C C C S S S C C C',
   'B . . . . . . . C',
   'L . . . . . . . D',
-  'B . . P C C . . D',
-  'B . . C C C . . C',
-  'C . . . . . . . C',
+  'M . . P C C . . D',
+  'U . . C C C . . C',
+  'K . . . . . . . C',
   'C . . . . . . . C',
   'C X X C C T C C C',
 ];
@@ -53,6 +56,9 @@ export const CHAR_TO_STATION: Record<string, StationType> = {
   C: 'counter',
   B: 'barrel',
   L: 'lettuceBarrel',
+  M: 'tomatoBarrel',
+  U: 'bunBarrel',
+  K: 'steakBarrel',
   S: 'stove',
   X: 'cuttingBoard',
   P: 'dishrack',

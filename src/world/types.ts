@@ -24,6 +24,9 @@ export type StationType =
   | 'counter' // regular surface — can hold items
   | 'barrel' // raw-ingredient storage (carrots)
   | 'lettuceBarrel' // raw-ingredient storage (lettuce)
+  | 'tomatoBarrel' // raw-ingredient storage (tomatoes)
+  | 'bunBarrel' // raw-ingredient storage (burger buns)
+  | 'steakBarrel' // raw-ingredient storage (steak)
   | 'stove' // cooking
   | 'cuttingBoard' // chopping
   | 'dishrack' // clean-plate dispenser (counter + dish rack of plates)
@@ -34,7 +37,12 @@ export type StationType =
  * A food/ingredient — the atomic edible things that can sit on a counter, be
  * held, or be piled onto a plate. Each chopped ingredient has three forms along
  * the chopping pipeline: raw -> chopped (a mid-chop appearance) -> pieces (the
- * result you carry away).
+ * result you carry away). The steak is chopped into a raw patty
+ * (`burgerUncooked`) which the stove then cooks into `burgerCooked`.
+ *
+ * The `bun` is special: it can't be chopped or cooked, and the renderer draws it
+ * as a single bun in hand but as two halves (bottom + upside-down top) once set
+ * on a surface (see itemMesh.ts).
  *
  * EXTENSION POINT: add ingredients here (e.g. 'onion'). The food->model map in
  * models.ts is keyed by this, so a new food forces you to give it a model (or
@@ -46,7 +54,15 @@ export type FoodType =
   | 'carrotPieces'
   | 'lettuce'
   | 'lettuceChopped'
-  | 'lettucePieces';
+  | 'lettucePieces'
+  | 'tomato'
+  | 'tomatoChopped'
+  | 'tomatoPieces'
+  | 'bun'
+  | 'steak'
+  | 'steakChopped'
+  | 'burgerUncooked'
+  | 'burgerCooked';
 
 /**
  * A carryable item — something the player can hold and put down. Two shapes:

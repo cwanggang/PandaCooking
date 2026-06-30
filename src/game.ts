@@ -17,6 +17,7 @@ import { PlayerView } from './render/playerView';
 import { HighlightView } from './render/highlightView';
 import { ItemsView } from './render/itemsView';
 import { CuttingBoardView } from './render/cuttingBoardView';
+import { StoveView } from './render/stoveView';
 import type { StationModels, ItemModels, PropModels } from './render/models';
 
 /**
@@ -43,6 +44,7 @@ export class Game {
   private readonly highlightView: HighlightView;
   private readonly itemsView: ItemsView;
   private readonly cuttingBoardView: CuttingBoardView;
+  private readonly stoveView: StoveView;
 
   private readonly input: InputSource;
 
@@ -98,6 +100,14 @@ export class Game {
       this.world.grid.cols,
       this.world.grid.rows,
     );
+    this.stoveView = new StoveView(
+      this.sceneView.scene,
+      this.world.grid,
+      itemModels,
+      propModels,
+      this.world.grid.cols,
+      this.world.grid.rows,
+    );
     void this.kitchenView; // built for side effect (meshes added to scene)
   }
 
@@ -141,6 +151,8 @@ export class Game {
     this.itemsView.sync(this.world.grid);
     // Draw cutting-board dynamics (food, knife, chop progress bar).
     this.cuttingBoardView.sync(this.world.grid);
+    // Draw stove dynamics (food in the pan, cook progress bar).
+    this.stoveView.sync(this.world.grid);
     this.sceneView.render();
 
     this.rafId = requestAnimationFrame(this.frame);

@@ -56,9 +56,10 @@ export class ItemsView {
 
     grid.forEach((cell) => {
       if (cell.heldItem === null) return;
-      // The cutting board draws its own food (with the mid-chop swap) in
-      // CuttingBoardView, so skip it here to avoid a double-render.
-      if (cell.station === 'cuttingBoard') return;
+      // The cutting board and stove draw their own food (with the chop mid-swap
+      // / on the pan) in their own views, so skip them here to avoid a
+      // double-render.
+      if (cell.station === 'cuttingBoard' || cell.station === 'stove') return;
       const key = `${cell.pos.col},${cell.pos.row}`;
       seen.add(key);
 
@@ -67,7 +68,8 @@ export class ItemsView {
       if (existing && existing.signature === signature) return; // already correct
       if (existing) this.remove(key); // changed (e.g. food added): rebuild
 
-      const mesh = buildItemMesh(cell.heldItem, this.itemModels);
+      // `placed` so a lone bun on the counter shows opened (two halves).
+      const mesh = buildItemMesh(cell.heldItem, this.itemModels, true);
       const { x, z } = gridToWorld(
         cell.pos.col,
         cell.pos.row,

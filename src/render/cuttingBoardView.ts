@@ -35,6 +35,8 @@ const KNIFE_TILT = -0.5; // radians, leaned back
 const CHOPPED_FORM: Partial<Record<FoodType, FoodType>> = {
   carrot: 'carrotChopped',
   lettuce: 'lettuceChopped',
+  tomato: 'tomatoChopped',
+  steak: 'steakChopped',
 };
 
 /** What we're currently drawing for a board's food, so we only rebuild on change. */
