@@ -42,18 +42,29 @@ export type ItemModelType = FoodType | 'plate';
 const STATION_MODEL_FILES: Partial<Record<StationType, string>> = {
   counter: '/models/kitchencounter_straight_A.gltf',
   barrel: '/models/crate_carrots.gltf',
-  stove: '/models/stove_single.gltf',
+  bunBarrel: '/models/crate_buns.gltf',
+  pattyBarrel: '/models/crate_steak.gltf',
+  lettuceBarrel: '/models/crate_lettuce.gltf',
+  cheeseBarrel: '/models/crate_cheese.gltf',
+  stove: '/models/stove_single_countertop.gltf',
 };
 
 /**
  * Which glTF file backs each renderable item atom. Total (not Partial): every
  * food (and the plate) must have a model, so adding one in types.ts forces you
- * to supply art here.
+ * to supply art here. Foods missing from this list get a placeholder box.
  */
-const ITEM_MODEL_FILES: Record<ItemModelType, string> = {
+const ITEM_MODEL_FILES: Partial<Record<ItemModelType, string>> = {
   carrot: '/models/food_ingredient_carrot.gltf',
   carrotChopped: '/models/food_ingredient_carrot_chopped.gltf',
   carrotPieces: '/models/food_ingredient_carrot_pieces.gltf',
+  bun: '/models/food_ingredient_bun.gltf',
+  patty: '/models/food_ingredient_burger_uncooked.gltf',
+  pattyCooked: '/models/food_ingredient_burger_cooked.gltf',
+  lettuce: '/models/food_ingredient_lettuce.gltf',
+  lettuceSlice: '/models/food_ingredient_lettuce_slice.gltf',
+  cheese: '/models/food_ingredient_cheese.gltf',
+  cheeseSlice: '/models/food_ingredient_cheese_slice.gltf',
   plate: '/models/plate.gltf',
 };
 
@@ -67,6 +78,7 @@ const PROP_MODEL_FILES: Record<PropType, { url: string; size: number }> = {
   dishrack: { url: '/models/dishrack_plates.gltf', size: 0.65 },
   cuttingboard: { url: '/models/cuttingboard.gltf', size: 0.85 },
   knife: { url: '/models/knife.gltf', size: 0.45 },
+  pan: { url: '/models/pan_A.gltf', size: 0.45 },
 };
 
 /** A loaded, normalized prop ready to be cloned once per cell. */
@@ -76,7 +88,7 @@ export type StationModels = Map<StationType, THREE.Object3D>;
 export type ItemModels = Map<ItemModelType, THREE.Object3D>;
 
 /** A decorative prop type that rides on top of a station mesh. */
-export type PropType = 'dishrack' | 'cuttingboard' | 'knife';
+export type PropType = 'dishrack' | 'cuttingboard' | 'knife' | 'pan';
 
 /** A loaded, normalized decoration ready to be cloned and seated on a station. */
 export type PropModels = Map<PropType, THREE.Object3D>;
@@ -104,11 +116,41 @@ export async function loadStationModels(): Promise<StationModels> {
   return models;
 }
 
+/** Colored placeholder boxes for food types that have no glTF model yet. */
+const PLACEHOLDER_FOOD_COLORS: Partial<Record<ItemModelType, number>> = {
+  bun: 0xf4d03f,
+  patty: 0xb03a2e,
+  pattyCooked: 0x6b2c1e,
+  lettuce: 0x52be80,
+  lettuceSlice: 0x6fbf73,
+  cheese: 0xf7dc6f,
+  cheeseSlice: 0xf9e076,
+};
+
+function buildPlaceholder(food: ItemModelType): THREE.Object3D {
+  const color = PLACEHOLDER_FOOD_COLORS[food] ?? 0x888888;
+  const geo = new THREE.BoxGeometry(0.3, 0.15, 0.3);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color }));
+  mesh.position.y = 0.075;
+  mesh.castShadow = true;
+  const wrapper = new THREE.Group();
+  wrapper.add(mesh);
+  return wrapper;
+}
+
+/** All food types plus 'plate'. Built from the union of FoodType | 'plate'. */
+const ALL_ITEM_TYPES: ItemModelType[] = [
+  'carrot', 'carrotChopped', 'carrotPieces',
+  'bun', 'patty', 'pattyCooked',
+  'lettuce', 'lettuceSlice', 'cheese', 'cheeseSlice',
+  'plate',
+];
+
 /**
  * Load every item model in parallel, normalize it for carrying/placing, and
  * return the map. Like loadStationModels but items are smaller and re-seated so
  * their base sits at y=0 (KayKit authors food meshes centered on their origin,
- * not resting on it).
+ * not resting on it). Missing glTF entries get placeholder boxes.
  */
 export async function loadItemModels(): Promise<ItemModels> {
   const loader = new GLTFLoader();
@@ -118,12 +160,31 @@ export async function loadItemModels(): Promise<ItemModels> {
 
   await Promise.all(
     entries.map(async ([item, url]) => {
-      const gltf = await loader.loadAsync(url);
-      models.set(item, normalizeItem(gltf.scene));
+      try {
+        const gltf = await loader.loadAsync(url);
+        models.set(item, normalizeItem(gltf.scene));
+      } catch {
+        models.set(item, buildPlaceholder(item));
+      }
     }),
   );
 
+  for (const item of ALL_ITEM_TYPES) {
+    if (!models.has(item)) {
+      models.set(item, buildPlaceholder(item));
+    }
+  }
+
   return models;
+}
+
+/**
+ * Load the player model (the red panda) and normalize its footprint to one cell.
+ */
+export async function loadPlayerModel(): Promise<THREE.Object3D> {
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync('/models/panda/panda_cooking_red.glb');
+  return normalize(gltf.scene);
 }
 
 /**

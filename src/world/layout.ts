@@ -5,7 +5,10 @@
  * Char legend:
  *   '.' = floor (walkable). Everything else is a solid station:
  *   'C' = counter        (light tan — regular surface, can hold items)
- *   'B' = barrel         (brown   — raw-ingredient storage)
+ *   'U' = bun barrel     (dispenses buns)
+ *   'M' = meat barrel    (dispenses raw patties)
+ *   'L' = lettuce barrel (dispenses lettuce)
+ *   'H' = cheese barrel  (dispenses cheese)
  *   'S' = stove          (red     — cooking)
  *   'X' = cutting board  (counter — chopping, board + knife on top)
  *   'P' = dish rack      (counter — clean-plate dispenser, plates on top)
@@ -15,29 +18,23 @@
  * To add a station type: pick a new char and add it to CHAR_TO_STATION below;
  * the parser, colors, and interaction switch then tell you what else to fill in.
  *
- * Footprint is 9 wide x 8 tall: a 7x6 walkable interior. Stations ring the
- * edges, plus a 3x2 counter island centered in the interior (cols 3-5, rows
- * 3-4) with 2 floor cells of clearance on every side. Its top-left cell is a
- * plate dispenser ('P'); the other five are plain counters. Row 0 is the top of
- * the array == north == -z in world space.
- *
- * The special stations sit at the same edge positions they always have; the
- * cells added by widening the kitchen are plain counters ('C'). Everything
- * downstream (grid size, centering, camera framing, shadows) derives from this
- * array, so this is the only edit needed to resize or re-arrange the kitchen.
+ * Footprint is 7 wide x 7 tall: a 2-cell walkable corridor ringing a 3x3
+ * counter island at the center (cols 2-4, rows 2-4). Three corner cells are
+ * plate dispensers ('P') for easy access. Row 0 is the top of the array == north
+ * == -z in world
+ * space.
  */
 
 import type { StationType } from './types';
 
 export const KITCHEN_LAYOUT: string[] = [
-  'C C C S S S C C C',
-  'B . . . . . . . C',
-  'B . . . . . . . D',
-  'B . . P C C . . D',
-  'B . . C C C . . C',
-  'C . . . . . . . C',
-  'C . . . . . . . C',
-  'C X X C C T C C C',
+  'C C S S S C C',
+  'M . . . . . C',
+  'U . P C P . D',
+  'L . C C C . D',
+  'H . P C C . C',
+  'C . . . . . C',
+  'C X X X T C C',
 ];
 
 /** The one char that means walkable floor. Everything else is a station. */
@@ -50,7 +47,10 @@ export const FLOOR_CHAR = '.';
  */
 export const CHAR_TO_STATION: Record<string, StationType> = {
   C: 'counter',
-  B: 'barrel',
+  U: 'bunBarrel',
+  M: 'pattyBarrel',
+  L: 'lettuceBarrel',
+  H: 'cheeseBarrel',
   S: 'stove',
   X: 'cuttingBoard',
   P: 'dishrack',
@@ -62,4 +62,4 @@ export const CHAR_TO_STATION: Record<string, StationType> = {
  * Where the player starts. Must be a floor cell inside the layout above.
  * (col 2, row 2 is interior floor.) Kept here so layout + spawn stay together.
  */
-export const PLAYER_SPAWN = { col: 2, row: 2 };
+export const PLAYER_SPAWN = { col: 1, row: 1 };

@@ -13,6 +13,7 @@ import {
   loadStationModels,
   loadItemModels,
   loadPropModels,
+  loadPlayerModel,
 } from './render/models';
 
 const container = document.querySelector<HTMLDivElement>('#app');
@@ -22,14 +23,15 @@ if (!container) throw new Error('#app container not found in index.html');
 // then build and start the game once the models exist (the views build their
 // meshes synchronously from them).
 async function main(): Promise<void> {
-  const [models, itemModels, propModels] = await Promise.all([
+  const [models, itemModels, propModels, playerModel] = await Promise.all([
     loadStationModels(),
     loadItemModels(),
     loadPropModels(),
+    loadPlayerModel(),
   ]);
 
   const input = new KeyboardInput();
-  const game = new Game(container!, input, models, itemModels, propModels);
+  const game = new Game(container!, input, models, itemModels, propModels, playerModel);
   game.start();
 
   console.log(

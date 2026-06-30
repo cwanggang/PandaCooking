@@ -22,7 +22,11 @@ export type CellType = 'floor' | 'station';
  */
 export type StationType =
   | 'counter' // regular surface — can hold items
-  | 'barrel' // raw-ingredient storage
+  | 'barrel' // raw-ingredient storage (generic)
+  | 'bunBarrel' // dispenses buns
+  | 'pattyBarrel' // dispenses raw patties
+  | 'lettuceBarrel' // dispenses lettuce
+  | 'cheeseBarrel' // dispenses cheese
   | 'stove' // cooking
   | 'cuttingBoard' // chopping
   | 'dishrack' // clean-plate dispenser (counter + dish rack of plates)
@@ -39,7 +43,17 @@ export type StationType =
  * models.ts is keyed by this, so a new food forces you to give it a model (or
  * the type-check fails).
  */
-export type FoodType = 'carrot' | 'carrotChopped' | 'carrotPieces';
+export type FoodType =
+  | 'carrot'
+  | 'carrotChopped'
+  | 'carrotPieces'
+  | 'bun'
+  | 'patty'
+  | 'pattyCooked'
+  | 'lettuce'
+  | 'lettuceSlice'
+  | 'cheese'
+  | 'cheeseSlice';
 
 /**
  * A carryable item — something the player can hold and put down. Two shapes:
@@ -87,6 +101,36 @@ export interface GridPos {
  * read rather than a type comparison — and so a future "floor you can't walk on"
  * (e.g. a hole) wouldn't have to be a counter.
  */
+/**
+ * A game recipe — a named set of ingredients the player must assemble on a
+ * plate and deliver to the delivery station to earn points.
+ */
+export interface Recipe {
+  name: string;
+  ingredients: FoodType[];
+  points: number;
+}
+
+/**
+ * A recipe currently active in the game — has a timer. When the timer reaches
+ * 0 the recipe gets replaced with a new random one.
+ */
+export interface ActiveRecipe {
+  recipe: Recipe;
+  timeRemaining: number;
+}
+
+/**
+ * High-level game state managed by the World. The HUD reads this every frame
+ * to display timer, score, and the current recipe.
+ */
+export interface GameState {
+  score: number;
+  timeRemaining: number;
+  activeRecipes: ActiveRecipe[];
+  phase: 'playing' | 'gameOver';
+}
+
 export interface Cell {
   type: CellType;
   solid: boolean;

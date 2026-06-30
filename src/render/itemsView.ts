@@ -17,7 +17,6 @@ import { gridToWorld } from '../world/coords';
 /** Height an item rests at — the top of a counter (~0.5 high), so the item's
  * base (seated at y=0 by models.ts) sits on the surface. */
 const ITEM_REST_HEIGHT = 0.5;
-
 /** What we're currently drawing at a cell, so we only rebuild on change. The
  * signature encodes a plate's contents, so piling food on it forces a rebuild. */
 interface PlacedItem {
@@ -56,9 +55,9 @@ export class ItemsView {
 
     grid.forEach((cell) => {
       if (cell.heldItem === null) return;
-      // The cutting board draws its own food (with the mid-chop swap) in
-      // CuttingBoardView, so skip it here to avoid a double-render.
-      if (cell.station === 'cuttingBoard') return;
+      // The cutting board and stove draw their own food (mid-chop swap, pan,
+      // progress bar) in their own views, so skip them here.
+      if (cell.station === 'cuttingBoard' || cell.station === 'stove') return;
       const key = `${cell.pos.col},${cell.pos.row}`;
       seen.add(key);
 
@@ -74,7 +73,8 @@ export class ItemsView {
         this.cols,
         this.rows,
       );
-      mesh.position.set(x, ITEM_REST_HEIGHT, z);
+      const y = ITEM_REST_HEIGHT;
+      mesh.position.set(x, y, z);
       this.scene.add(mesh);
       this.placed.set(key, { signature, mesh });
     });

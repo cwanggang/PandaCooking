@@ -37,11 +37,15 @@ const COUNTER_TOP_PROPS: Partial<Record<StationType, PropType>> = {
 const STATION_COLORS: Record<StationType, number> = {
   counter: 0xd2b48c, // light tan
   barrel: 0x8b5a2b, // brown
+  bunBarrel: 0xf4d03f, // yellow (bun)
+  pattyBarrel: 0xb03a2e, // red-brown (meat)
+  lettuceBarrel: 0x52be80, // green (lettuce)
+  cheeseBarrel: 0xf7dc6f, // yellow (cheese)
   stove: 0xcc3333, // red
   cuttingBoard: 0xe8923a, // orange
   dishrack: 0xd2b48c, // tan (counter-toned; only the box fallback uses this)
   delivery: 0x3cb371, // green
-  trash: 0x3a7bd5, // blue
+  trash: 0x3a3a3a, // dark gray
 };
 
 export class KitchenView {
@@ -135,6 +139,34 @@ export class KitchenView {
           mesh.position.set(x, COUNTER_HEIGHT, z); // base sits on the counter top
           this.root.add(mesh);
         }
+        return;
+      }
+
+      // Trash: custom bin-like shape — shorter body + a rim ring at the top.
+      if (cell.station === 'trash') {
+        const bodyH = COUNTER_HEIGHT * 0.85;
+        const bodyGeo = new THREE.BoxGeometry(CELL_SIZE * 0.85, bodyH, CELL_SIZE * 0.85);
+        const body = new THREE.Mesh(bodyGeo, materialFor('trash'));
+        body.position.set(x, bodyH / 2, z);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        this.root.add(body);
+
+        const rimGeo = new THREE.BoxGeometry(CELL_SIZE * 0.92, 0.06, CELL_SIZE * 0.92);
+        const rim = new THREE.Mesh(rimGeo, materialFor('trash'));
+        rim.position.set(x, bodyH + 0.03, z);
+        rim.castShadow = true;
+        this.root.add(rim);
+
+        // Dark interior circle (looks like open lid)
+        const lid = new THREE.Mesh(
+          new THREE.CircleGeometry(CELL_SIZE * 0.38, 16),
+          new THREE.MeshStandardMaterial({ color: 0x1a1a1a, side: THREE.DoubleSide }),
+        );
+        lid.rotation.x = -Math.PI / 2;
+        lid.position.set(x, bodyH + 0.04, z);
+        this.root.add(lid);
+
         return;
       }
 

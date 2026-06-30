@@ -1,73 +1,80 @@
-/**
- * World: the single source of truth the whole game reads from.
- *
- * It owns the grid and the player and is the one object the renderer is allowed
- * to read and the input layer is allowed to drive (via applyIntent). Still pure:
- * no Three.js, no DOM, no console. It can be constructed and stepped headless,
- * which is what makes the logic testable and (later) deterministic for EMG.
- */
-
 import { Grid } from './grid';
 import { Player } from './player';
 import { interactWithStation, completeProcess } from './stations';
 import { KITCHEN_LAYOUT, PLAYER_SPAWN } from './layout';
 import type { Intent } from './intents';
-import type { Cell, GridPos, StationType } from './types';
+import type { ActiveRecipe, Cell, GameState, GridPos, Recipe, StationType } from './types';
 
-/**
- * What an INTERACT resolved to, so the caller (game.ts) can report it without
- * the model itself doing I/O. INTERACT only fires when a station is faced (see
- * applyIntent), so `target` is always the faced station kind.
- */
 export interface InteractReport {
   pos: GridPos;
   target: StationType;
   message: string;
 }
 
+const MAX_RECIPES = 3;
+const RECIPE_TIMEOUT = 180;
+const INITIAL_RECIPES = 1;
+const RECIPE_UNLOCK_INTERVAL = 20; // seconds between recipe unlocks
+
+const RECIPES: Recipe[] = [
+  { name: 'Hamburger', ingredients: ['bun', 'pattyCooked', 'lettuceSlice', 'cheeseSlice'], points: 400 },
+  { name: 'Cheeseburger', ingredients: ['bun', 'pattyCooked', 'cheeseSlice'], points: 300 },
+  { name: 'Simple Burger', ingredients: ['bun', 'pattyCooked'], points: 200 },
+  { name: 'Veggie Plate', ingredients: ['lettuceSlice', 'cheeseSlice'], points: 100 },
+];
+
+function randomRecipe(): Recipe {
+  return RECIPES[Math.floor(Math.random() * RECIPES.length)];
+}
+
+function newActiveRecipe(): ActiveRecipe {
+  return { recipe: randomRecipe(), timeRemaining: RECIPE_TIMEOUT };
+}
+
 export class World {
   readonly grid: Grid;
   readonly player: Player;
 
+  score = 0;
+  activeRecipes: ActiveRecipe[] = [];
+  private timeToNextRecipe = RECIPE_UNLOCK_INTERVAL;
+
   constructor() {
     this.grid = Grid.fromLayout(KITCHEN_LAYOUT);
     this.player = new Player(PLAYER_SPAWN);
+    for (let i = 0; i < INITIAL_RECIPES; i++) {
+      this.activeRecipes.push(newActiveRecipe());
+    }
   }
 
-  /**
-   * The station cell the player is currently facing, or null if it faces floor
-   * or off the grid edge. This is the ONE definition of "what is selected" —
-   * both the INTERACT handler below and the renderer's highlight read it, so
-   * they can never disagree about which station is targeted. Pure: just two
-   * grid lookups, no side effects.
-   */
+  getState(): GameState {
+    return {
+      score: this.score,
+      timeRemaining: 0,
+      activeRecipes: this.activeRecipes,
+      phase: 'playing',
+    };
+  }
+
   selectedCell(): Cell | null {
-    const cell = this.player.interactTarget(this.grid); // faced cell, may be undefined
+    const cell = this.player.interactTarget(this.grid);
     if (cell === undefined || cell.station === null) return null;
     return cell;
   }
 
-  /**
-   * Apply one intent. Returns an InteractReport for INTERACT (so the caller can
-   * log/handle it) and null for movement or an INTERACT that hit nothing.
-   * Centralizing dispatch here keeps the input and game layers from needing to
-   * know the player's internals.
-   *
-   * INTERACT only acts when a station is faced (selectedCell()): facing floor or
-   * off the grid is a no-op. That is the "can only interact with what you face"
-   * rule.
-   *
-   * EXTENSION POINT: this is the seam for pickup/putdown — when a station is
-   * selected, INTERACT will mutate that cell's station state (pick up / drop /
-   * start cooking) based on what the player is holding, instead of just
-   * reporting it.
-   */
   applyIntent(intent: Intent): InteractReport | null {
     if (intent === 'INTERACT') {
       const cell = this.selectedCell();
-      if (cell === null || cell.station === null) return null; // nothing faced
-      const result = interactWithStation(this.player, cell);
-      if (result === null) return null; // interaction did nothing
+      if (cell === null || cell.station === null) return null;
+      const result = interactWithStation(this.player, cell, this.activeRecipes);
+      if (result === null) return null;
+
+      if (result.deliveryComplete !== undefined) {
+        const idx = result.deliveryComplete;
+        this.score += this.activeRecipes[idx].recipe.points;
+        this.activeRecipes[idx] = newActiveRecipe();
+      }
+
       return { pos: cell.pos, target: cell.station, message: result.message };
     }
 
@@ -75,14 +82,22 @@ export class World {
     return null;
   }
 
-  /**
-   * Advance continuous simulation by a fixed timestep. Movement is event-driven,
-   * but timed station processes (chopping now, cooking later) tick here, so the
-   * fixed quanta keep them deterministic.
-   *
-   * EXTENSION POINT: round timers and other time-based logic also advance here.
-   */
   update(dt: number): void {
+    for (let i = 0; i < this.activeRecipes.length; i++) {
+      this.activeRecipes[i].timeRemaining -= dt;
+      if (this.activeRecipes[i].timeRemaining <= 0) {
+        this.activeRecipes[i] = newActiveRecipe();
+      }
+    }
+
+    if (this.activeRecipes.length < MAX_RECIPES) {
+      this.timeToNextRecipe -= dt;
+      if (this.timeToNextRecipe <= 0) {
+        this.activeRecipes.push(newActiveRecipe());
+        this.timeToNextRecipe = RECIPE_UNLOCK_INTERVAL;
+      }
+    }
+
     this.grid.forEach((cell) => {
       if (cell.process === null) return;
       cell.process.elapsed += dt;

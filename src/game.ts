@@ -17,7 +17,10 @@ import { PlayerView } from './render/playerView';
 import { HighlightView } from './render/highlightView';
 import { ItemsView } from './render/itemsView';
 import { CuttingBoardView } from './render/cuttingBoardView';
+import { StoveView } from './render/stoveView';
+import { HUD } from './render/hud';
 import type { StationModels, ItemModels, PropModels } from './render/models';
+import type { Object3D } from 'three';
 
 /**
  * Fixed simulation step: 60 logic ticks per second.
@@ -43,6 +46,8 @@ export class Game {
   private readonly highlightView: HighlightView;
   private readonly itemsView: ItemsView;
   private readonly cuttingBoardView: CuttingBoardView;
+  private readonly stoveView: StoveView;
+  private readonly hud: HUD;
 
   private readonly input: InputSource;
 
@@ -59,6 +64,7 @@ export class Game {
     models: StationModels,
     itemModels: ItemModels,
     propModels: PropModels,
+    playerModel: Object3D,
   ) {
     this.input = input;
     // Build the renderer from the world: views read the grid to size themselves.
@@ -78,7 +84,9 @@ export class Game {
       this.world.grid.cols,
       this.world.grid.rows,
       itemModels,
+      playerModel,
     );
+    this.playerView.initPos(this.world.player.pos.col, this.world.player.pos.row);
     this.highlightView = new HighlightView(
       this.sceneView.scene,
       this.world.grid.cols,
@@ -98,6 +106,15 @@ export class Game {
       this.world.grid.cols,
       this.world.grid.rows,
     );
+    this.stoveView = new StoveView(
+      this.sceneView.scene,
+      this.world.grid,
+      itemModels,
+      propModels,
+      this.world.grid.cols,
+      this.world.grid.rows,
+    );
+    this.hud = new HUD(container);
     void this.kitchenView; // built for side effect (meshes added to scene)
   }
 
@@ -131,9 +148,9 @@ export class Game {
       this.accumulator -= STEP_SECONDS;
     }
 
-    // Render reads the (now up-to-date) model. Movement is grid-snapped so there
-    // is nothing to interpolate yet; if we add smooth motion later, the leftover
-    // `this.accumulator / STEP_SECONDS` is the interpolation alpha to pass here.
+    // Render reads the (now up-to-date) model. Movement is grid-snapped in the
+    // sim; we pass the leftover accumulator alpha so PlayerView can interpolate
+    // between the last and current grid position for smooth visuals.
     this.playerView.sync(this.world.player);
     // Highlight whatever station the player currently faces (or nothing).
     this.highlightView.sync(this.world.selectedCell());
@@ -141,6 +158,10 @@ export class Game {
     this.itemsView.sync(this.world.grid);
     // Draw cutting-board dynamics (food, knife, chop progress bar).
     this.cuttingBoardView.sync(this.world.grid);
+    // Draw stove dynamics (pan, food, cooking progress bar).
+    this.stoveView.sync(this.world.grid);
+    // Update HUD (timer, score, recipe).
+    this.hud.sync(this.world.getState());
     this.sceneView.render();
 
     this.rafId = requestAnimationFrame(this.frame);
@@ -151,13 +172,8 @@ export class Game {
     if (this.pendingIntents.length > 0) {
       for (const intent of this.pendingIntents) {
         const report = this.world.applyIntent(intent);
-        if (report) {
-          // INTERACT proof-of-life: log the cell the player is facing. This is
-          // the only place INTERACT does anything yet (no station logic).
-          console.log(
-            `INTERACT -> (col ${report.pos.col}, row ${report.pos.row}) ` +
-              `[${report.target}]: ${report.message}`,
-          );
+        if (report && report.message.startsWith('Wrong')) {
+          this.hud.showMessage(report.message, 'error');
         }
       }
       this.pendingIntents.length = 0; // consumed

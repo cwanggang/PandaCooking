@@ -1,99 +1,100 @@
-/**
- * Per-station interaction logic — "what happens when you INTERACT with this
- * kind of station". Pure logic, no rendering, no I/O: it mutates the player's
- * held item and the faced cell's held item, and returns a short message (or
- * null when the interaction did nothing).
- *
- * The switch is EXHAUSTIVE on purpose (no `default`): add a StationType in
- * types.ts and TypeScript forces you to decide what INTERACT does with it here.
- */
-
-import type { Cell, FoodType, Item } from './types';
+import type { Cell, FoodType, Item, ActiveRecipe } from './types';
 import type { Player } from './player';
 
-/** What an INTERACT did, so the caller can report it without doing I/O. */
 export interface InteractionResult {
   message: string;
+  deliveryComplete?: number;
 }
 
-/** Which food a crate dispenses. Just the carrot for now; later this will vary
- * per crate (carrot/onion/...). */
-const CRATE_FOOD: FoodType = 'carrot';
-
-/** How long (seconds) a chop takes on the cutting board. */
 export const CHOP_DURATION = 1;
+export const COOK_DURATION = 3;
 
-/** A short human-readable name for an item, for INTERACT report messages. */
+const BARREL_FOOD: Record<string, FoodType> = {
+  bunBarrel: 'bun',
+  pattyBarrel: 'patty',
+  lettuceBarrel: 'lettuce',
+  cheeseBarrel: 'cheese',
+};
+
 function label(item: Item): string {
   if (item.kind === 'food') return item.food;
   return item.contents.length > 0 ? 'plate of food' : 'plate';
 }
 
-/** Whether a food can be chopped on the cutting board (only raw carrot today). */
 function isChoppable(food: FoodType): boolean {
-  return food === 'carrot';
+  return food === 'carrot' || food === 'lettuce' || food === 'cheese';
 }
 
-/** What a food becomes once a chop completes. Non-choppable foods are unchanged
- * (defensive — only choppable foods ever start a chop). */
 function chopResult(food: FoodType): FoodType {
-  return food === 'carrot' ? 'carrotPieces' : food;
+  if (food === 'carrot') return 'carrotPieces';
+  if (food === 'lettuce') return 'lettuceSlice';
+  if (food === 'cheese') return 'cheeseSlice';
+  return food;
 }
 
-/**
- * Finalize a station's just-completed process. Called by world.update(dt) when
- * a cell's process reaches its duration. Clears the process and applies its
- * effect — for the cutting board, the food on it becomes its chopped result.
- */
+function isCookable(food: FoodType): boolean {
+  return food === 'patty';
+}
+
+function cookResult(food: FoodType): FoodType {
+  return food === 'patty' ? 'pattyCooked' : food;
+}
+
+function arraysMatch(a: FoodType[], b: FoodType[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, i) => val === sortedB[i]);
+}
+
 export function completeProcess(cell: Cell): void {
   cell.process = null;
-  if (cell.station === 'cuttingBoard' && cell.heldItem?.kind === 'food') {
+  if (cell.heldItem?.kind !== 'food') return;
+  if (cell.station === 'cuttingBoard') {
     cell.heldItem = { kind: 'food', food: chopResult(cell.heldItem.food) };
+  }
+  if (cell.station === 'stove') {
+    cell.heldItem = { kind: 'food', food: cookResult(cell.heldItem.food) };
   }
 }
 
-/**
- * Run the INTERACT between the player and the faced station cell. Mutates
- * player.heldItem and/or cell.heldItem. Returns null if nothing happened (so
- * the caller treats it as a no-op).
- */
 export function interactWithStation(
   player: Player,
   cell: Cell,
+  activeRecipes: ActiveRecipe[],
 ): InteractionResult | null {
   switch (cell.station) {
     case 'barrel':
-      // Ingredient crate: an empty-handed grab spawns the crate's food into the
-      // player's hands. If already carrying something, do nothing.
+    case 'bunBarrel':
+    case 'pattyBarrel':
+    case 'lettuceBarrel':
+    case 'cheeseBarrel': {
       if (player.heldItem !== null) return null;
-      player.heldItem = { kind: 'food', food: CRATE_FOOD };
-      return { message: `grabbed ${CRATE_FOOD} from crate` };
+      const food = BARREL_FOOD[cell.station];
+      player.heldItem = { kind: 'food', food };
+      return { message: `grabbed ${food} from ${cell.station}` };
+    }
 
-    case 'dishrack':
-      // Clean-plate dispenser: an empty-handed grab spawns a fresh empty plate.
-      // Unlimited supply, mirroring the barrel. If already carrying something,
-      // do nothing.
+    case 'dishrack': {
       if (player.heldItem !== null) return null;
       player.heldItem = { kind: 'plate', contents: [] };
       return { message: 'grabbed a plate from the dish rack' };
+    }
 
     case 'counter': {
       const held = player.heldItem;
       const onCounter = cell.heldItem;
 
-      // Pile food onto a plate already resting on the counter. Unlimited.
       if (held?.kind === 'food' && onCounter?.kind === 'plate') {
         onCounter.contents.push(held.food);
         player.heldItem = null;
         return { message: `added ${held.food} to plate` };
       }
-      // Put down onto an empty counter.
       if (held !== null && onCounter === null) {
         cell.heldItem = held;
         player.heldItem = null;
         return { message: `placed ${label(held)} on counter` };
       }
-      // Pick up from the counter (a plate comes with its contents).
       if (held === null && onCounter !== null) {
         player.heldItem = onCounter;
         cell.heldItem = null;
@@ -106,23 +107,17 @@ export function interactWithStation(
       const held = player.heldItem;
       const onBoard = cell.heldItem;
 
-      // While a chop is running, the board is busy — ignore interacts.
       if (cell.process !== null) return null;
 
-      // 1. Place a single food onto an empty board (plates not allowed here).
       if (onBoard === null && held?.kind === 'food') {
         cell.heldItem = held;
         player.heldItem = null;
         return { message: `placed ${held.food} on cutting board` };
       }
-      // 2. Start chopping: an empty-handed interact on a board holding a raw,
-      //    choppable food. The board's knife "leaves" (render hides it) and the
-      //    chop runs over CHOP_DURATION in world.update.
       if (held === null && onBoard?.kind === 'food' && isChoppable(onBoard.food)) {
         cell.process = { elapsed: 0, duration: CHOP_DURATION };
         return { message: `started chopping ${onBoard.food}` };
       }
-      // 3. Pick up whatever rests on the board (e.g. the finished pieces).
       if (held === null && onBoard !== null) {
         player.heldItem = onBoard;
         cell.heldItem = null;
@@ -131,13 +126,52 @@ export function interactWithStation(
       return null;
     }
 
-    // Special stations don't accept items yet (no placing/picking here).
-    case 'stove':
-    case 'delivery':
-    case 'trash':
-      return null;
+    case 'stove': {
+      const held = player.heldItem;
+      const onStove = cell.heldItem;
 
-    // selectedCell() only ever passes a station cell, but the type allows null.
+      if (cell.process !== null) return null;
+
+      if (onStove === null && held?.kind === 'food' && isCookable(held.food)) {
+        cell.heldItem = held;
+        cell.process = { elapsed: 0, duration: COOK_DURATION };
+        player.heldItem = null;
+        return { message: `started cooking ${held.food}` };
+      }
+      if (held === null && onStove !== null) {
+        player.heldItem = onStove;
+        cell.heldItem = null;
+        return { message: `picked up ${label(onStove)} from stove` };
+      }
+      return null;
+    }
+
+    case 'delivery': {
+      const held = player.heldItem;
+      if (held?.kind !== 'plate' || held.contents.length === 0) return null;
+
+      for (let i = 0; i < activeRecipes.length; i++) {
+        const ar = activeRecipes[i];
+        if (arraysMatch(held.contents, ar.recipe.ingredients)) {
+          player.heldItem = null;
+          return {
+            message: `Delivered ${ar.recipe.name}! +${ar.recipe.points} pts`,
+            deliveryComplete: i,
+          };
+        }
+      }
+
+      player.heldItem = null;
+      return { message: 'Wrong ingredients! Plate discarded.' };
+    }
+
+    case 'trash': {
+      if (player.heldItem === null) return null;
+      const name = label(player.heldItem);
+      player.heldItem = null;
+      return { message: `discarded ${name} in trash` };
+    }
+
     case null:
       return null;
   }
