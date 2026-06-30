@@ -18,6 +18,7 @@ import { HighlightView } from './render/highlightView';
 import { ItemsView } from './render/itemsView';
 import { CuttingBoardView } from './render/cuttingBoardView';
 import { StoveView } from './render/stoveView';
+import { StartScreen } from './render/startScreen';
 import type { StationModels, ItemModels, PropModels } from './render/models';
 
 /**
@@ -54,6 +55,8 @@ export class Game {
 
   /** Intents pulled from input, waiting to be consumed by the next sim step. */
   private pendingIntents: Intent[] = [];
+
+  private started = false;
 
   constructor(
     container: HTMLElement,
@@ -109,6 +112,10 @@ export class Game {
       this.world.grid.rows,
     );
     void this.kitchenView; // built for side effect (meshes added to scene)
+
+    new StartScreen(container, () => {
+      this.started = true;
+    });
   }
 
   start(): void {
@@ -160,6 +167,7 @@ export class Game {
 
   /** One fixed simulation step: apply queued intents, then advance time. */
   private step(dt: number): void {
+    if (!this.started) return;
     if (this.pendingIntents.length > 0) {
       for (const intent of this.pendingIntents) {
         const report = this.world.applyIntent(intent);
