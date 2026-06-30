@@ -37,6 +37,7 @@ const COUNTER_TOP_PROPS: Partial<Record<StationType, PropType>> = {
 const STATION_COLORS: Record<StationType, number> = {
   counter: 0xd2b48c, // light tan
   barrel: 0x8b5a2b, // brown
+  lettuceBarrel: 0x4a7c3a, // leafy green (only the box fallback uses this)
   stove: 0xcc3333, // red
   cuttingBoard: 0xe8923a, // orange
   dishrack: 0xd2b48c, // tan (counter-toned; only the box fallback uses this)

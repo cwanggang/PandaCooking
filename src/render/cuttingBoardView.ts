@@ -34,6 +34,7 @@ const KNIFE_TILT = -0.5; // radians, leaned back
 /** The mid-chop appearance of a food (shown during the second half of a chop). */
 const CHOPPED_FORM: Partial<Record<FoodType, FoodType>> = {
   carrot: 'carrotChopped',
+  lettuce: 'lettuceChopped',
 };
 
 /** What we're currently drawing for a board's food, so we only rebuild on change. */

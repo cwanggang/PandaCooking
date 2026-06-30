@@ -22,7 +22,8 @@ export type CellType = 'floor' | 'station';
  */
 export type StationType =
   | 'counter' // regular surface — can hold items
-  | 'barrel' // raw-ingredient storage
+  | 'barrel' // raw-ingredient storage (carrots)
+  | 'lettuceBarrel' // raw-ingredient storage (lettuce)
   | 'stove' // cooking
   | 'cuttingBoard' // chopping
   | 'dishrack' // clean-plate dispenser (counter + dish rack of plates)
@@ -31,15 +32,21 @@ export type StationType =
 
 /**
  * A food/ingredient — the atomic edible things that can sit on a counter, be
- * held, or be piled onto a plate. A carrot has three forms along the chopping
- * pipeline: raw -> chopped (a mid-chop appearance) -> pieces (the result you
- * carry away).
+ * held, or be piled onto a plate. Each chopped ingredient has three forms along
+ * the chopping pipeline: raw -> chopped (a mid-chop appearance) -> pieces (the
+ * result you carry away).
  *
  * EXTENSION POINT: add ingredients here (e.g. 'onion'). The food->model map in
  * models.ts is keyed by this, so a new food forces you to give it a model (or
  * the type-check fails).
  */
-export type FoodType = 'carrot' | 'carrotChopped' | 'carrotPieces';
+export type FoodType =
+  | 'carrot'
+  | 'carrotChopped'
+  | 'carrotPieces'
+  | 'lettuce'
+  | 'lettuceChopped'
+  | 'lettucePieces';
 
 /**
  * A carryable item — something the player can hold and put down. Two shapes:

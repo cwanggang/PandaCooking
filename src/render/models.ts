@@ -42,6 +42,7 @@ export type ItemModelType = FoodType | 'plate';
 const STATION_MODEL_FILES: Partial<Record<StationType, string>> = {
   counter: '/models/kitchencounter_straight_A.gltf',
   barrel: '/models/crate_carrots.gltf',
+  lettuceBarrel: '/models/crate_lettuce.gltf',
   stove: '/models/stove_single.gltf',
 };
 
@@ -54,6 +55,9 @@ const ITEM_MODEL_FILES: Record<ItemModelType, string> = {
   carrot: '/models/food_ingredient_carrot.gltf',
   carrotChopped: '/models/food_ingredient_carrot_chopped.gltf',
   carrotPieces: '/models/food_ingredient_carrot_pieces.gltf',
+  lettuce: '/models/food_ingredient_lettuce.gltf',
+  lettuceChopped: '/models/food_ingredient_lettuce_chopped.gltf',
+  lettucePieces: '/models/food_ingredient_lettuce_slice.gltf',
   plate: '/models/plate.gltf',
 };
 

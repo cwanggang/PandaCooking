@@ -5,7 +5,8 @@
  * Char legend:
  *   '.' = floor (walkable). Everything else is a solid station:
  *   'C' = counter        (light tan — regular surface, can hold items)
- *   'B' = barrel         (brown   — raw-ingredient storage)
+ *   'B' = barrel         (brown   — carrot crate)
+ *   'L' = lettuce barrel (green   — lettuce crate)
  *   'S' = stove          (red     — cooking)
  *   'X' = cutting board  (counter — chopping, board + knife on top)
  *   'P' = dish rack      (counter — clean-plate dispenser, plates on top)
@@ -32,7 +33,7 @@ import type { StationType } from './types';
 export const KITCHEN_LAYOUT: string[] = [
   'C C C S S S C C C',
   'B . . . . . . . C',
-  'B . . . . . . . D',
+  'L . . . . . . . D',
   'B . . P C C . . D',
   'B . . C C C . . C',
   'C . . . . . . . C',
@@ -51,6 +52,7 @@ export const FLOOR_CHAR = '.';
 export const CHAR_TO_STATION: Record<string, StationType> = {
   C: 'counter',
   B: 'barrel',
+  L: 'lettuceBarrel',
   S: 'stove',
   X: 'cuttingBoard',
   P: 'dishrack',

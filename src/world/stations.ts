@@ -8,7 +8,7 @@
  * types.ts and TypeScript forces you to decide what INTERACT does with it here.
  */
 
-import type { Cell, FoodType, Item } from './types';
+import type { Cell, FoodType, Item, StationType } from './types';
 import type { Player } from './player';
 
 /** What an INTERACT did, so the caller can report it without doing I/O. */
@@ -16,9 +16,12 @@ export interface InteractionResult {
   message: string;
 }
 
-/** Which food a crate dispenses. Just the carrot for now; later this will vary
- * per crate (carrot/onion/...). */
-const CRATE_FOOD: FoodType = 'carrot';
+/** Which raw food each crate/barrel station dispenses. Add a crate station type
+ * here and it starts handing out that ingredient. */
+const CRATE_FOOD: Partial<Record<StationType, FoodType>> = {
+  barrel: 'carrot',
+  lettuceBarrel: 'lettuce',
+};
 
 /** How long (seconds) a chop takes on the cutting board. */
 export const CHOP_DURATION = 1;
@@ -29,15 +32,22 @@ function label(item: Item): string {
   return item.contents.length > 0 ? 'plate of food' : 'plate';
 }
 
-/** Whether a food can be chopped on the cutting board (only raw carrot today). */
+/** What each raw food becomes once a chop completes. A food is choppable iff it
+ * appears here; add a raw->pieces entry to make a new ingredient choppable. */
+const CHOP_RESULT: Partial<Record<FoodType, FoodType>> = {
+  carrot: 'carrotPieces',
+  lettuce: 'lettucePieces',
+};
+
+/** Whether a food can be chopped on the cutting board. */
 function isChoppable(food: FoodType): boolean {
-  return food === 'carrot';
+  return food in CHOP_RESULT;
 }
 
 /** What a food becomes once a chop completes. Non-choppable foods are unchanged
  * (defensive — only choppable foods ever start a chop). */
 function chopResult(food: FoodType): FoodType {
-  return food === 'carrot' ? 'carrotPieces' : food;
+  return CHOP_RESULT[food] ?? food;
 }
 
 /**
@@ -63,11 +73,15 @@ export function interactWithStation(
 ): InteractionResult | null {
   switch (cell.station) {
     case 'barrel':
+    case 'lettuceBarrel': {
       // Ingredient crate: an empty-handed grab spawns the crate's food into the
       // player's hands. If already carrying something, do nothing.
       if (player.heldItem !== null) return null;
-      player.heldItem = { kind: 'food', food: CRATE_FOOD };
-      return { message: `grabbed ${CRATE_FOOD} from crate` };
+      const food = CRATE_FOOD[cell.station];
+      if (!food) return null;
+      player.heldItem = { kind: 'food', food };
+      return { message: `grabbed ${food} from crate` };
+    }
 
     case 'dishrack':
       // Clean-plate dispenser: an empty-handed grab spawns a fresh empty plate.
