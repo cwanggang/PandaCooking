@@ -20,28 +20,28 @@
  * the parser, colors, and interaction switch then tell you what else to fill in.
  *
  * Footprint is 9 wide x 8 tall: a 7x6 walkable interior. Stations ring the
- * edges, plus a 3x2 counter island centered in the interior (cols 3-5, rows
- * 3-4) with 2 floor cells of clearance on every side. Its top-left cell is a
- * plate dispenser ('P'); the other five are plain counters. Row 0 is the top of
- * the array == north == -z in world space.
+ * edges, plus a 3x2 island centered in the interior (cols 3-5, rows 3-4) with 2
+ * floor cells of clearance on every side. Its top row is a plate dispenser ('P')
+ * and two counters; its bottom row is two cutting boards ('X') flanking a
+ * counter. Row 0 is the top of the array == north == -z in world space.
  *
- * The special stations sit at the same edge positions they always have; the
- * cells added by widening the kitchen are plain counters ('C'). Everything
- * downstream (grid size, centering, camera framing, shadows) derives from this
- * array, so this is the only edit needed to resize or re-arrange the kitchen.
+ * The left wall (col 0) is the ingredient pantry, top to bottom: steak, bun,
+ * trash, lettuce, carrot, tomato crates. Everything downstream (grid size,
+ * centering, camera framing, shadows) derives from this array, so this is the
+ * only edit needed to resize or re-arrange the kitchen.
  */
 
 import type { StationType } from './types';
 
 export const KITCHEN_LAYOUT: string[] = [
   'C C C S S S C C C',
-  'B . . . . . . . C',
-  'L . . . . . . . D',
-  'M . . P C C . . D',
-  'U . . C C C . . C',
   'K . . . . . . . C',
-  'C . . . . . . . C',
-  'C X X C C T C C C',
+  'U . . . . . . . D',
+  'T . . P C C . . D',
+  'L . . X C X . . C',
+  'B . . . . . . . C',
+  'M . . . . . . . C',
+  'C C C C C C C C C',
 ];
 
 /** The one char that means walkable floor. Everything else is a station. */
