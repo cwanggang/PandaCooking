@@ -56,6 +56,7 @@ export class Grid {
             pos,
             station: null,
             heldItem: null,
+            process: null,
           });
           continue;
         }
@@ -73,6 +74,7 @@ export class Grid {
           pos,
           station,
           heldItem: null,
+          process: null,
         });
       }
       cells.push(rowCells);

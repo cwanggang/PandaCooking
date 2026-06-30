@@ -12,10 +12,21 @@ import * as THREE from 'three';
 import type { Grid } from '../world/grid';
 import type { StationType } from '../world/types';
 import { CELL_SIZE, gridToWorld } from '../world/coords';
-import type { StationModels } from './models';
+import type { StationModels, PropModels, PropType } from './models';
 
 /** How tall a counter box stands above the floor (world units). */
 const COUNTER_HEIGHT = 0.5;
+
+/**
+ * Stations that are really "a counter with a prop on top": we render the same
+ * counter base and seat the named prop on it. Keeps the dish rack and cutting
+ * board from each needing their own kind of furniture. (The cutting board's
+ * knife and food are dynamic — drawn by CuttingBoardView, not here.)
+ */
+const COUNTER_TOP_PROPS: Partial<Record<StationType, PropType>> = {
+  dishrack: 'dishrack',
+  cuttingBoard: 'cuttingboard',
+};
 
 /**
  * The color of each station type. PRESENTATION ONLY — the world model never
@@ -28,7 +39,7 @@ const STATION_COLORS: Record<StationType, number> = {
   barrel: 0x8b5a2b, // brown
   stove: 0xcc3333, // red
   cuttingBoard: 0xe8923a, // orange
-  plate: 0xffffff, // white
+  dishrack: 0xd2b48c, // tan (counter-toned; only the box fallback uses this)
   delivery: 0x3cb371, // green
   trash: 0x3a7bd5, // blue
 };
@@ -37,7 +48,12 @@ export class KitchenView {
   /** A group holding all kitchen meshes, added to the scene as one unit. */
   readonly root: THREE.Group;
 
-  constructor(grid: Grid, scene: THREE.Scene, models: StationModels) {
+  constructor(
+    grid: Grid,
+    scene: THREE.Scene,
+    models: StationModels,
+    props: PropModels,
+  ) {
     this.root = new THREE.Group();
 
     // --- Floor: one plane spanning the whole footprint -------------------
@@ -75,6 +91,30 @@ export class KitchenView {
       return mat;
     };
 
+    // Place a colored placeholder box (used as the fallback for any station
+    // without a real model). Box is centered on its origin, so lift it by half
+    // its height to rest its base on the floor (y=0).
+    const addBox = (station: StationType, x: number, z: number): void => {
+      const box = new THREE.Mesh(counterGeo, materialFor(station));
+      box.position.set(x, COUNTER_HEIGHT / 2, z);
+      box.castShadow = true; // stations throw shadows...
+      box.receiveShadow = true; // ...and catch the player's/each other's
+      this.root.add(box);
+    };
+
+    // Place a counter base at a cell: the real counter model if we have one,
+    // else a counter-colored box. Used for plain counters and under the rack.
+    const addCounterBase = (x: number, z: number): void => {
+      const counterModel = models.get('counter');
+      if (counterModel) {
+        const prop = counterModel.clone();
+        prop.position.set(x, 0, z);
+        this.root.add(prop);
+        return;
+      }
+      addBox('counter', x, z);
+    };
+
     grid.forEach((cell) => {
       if (cell.station === null) return; // floor cells get no mesh
       const { x, z } = gridToWorld(
@@ -83,6 +123,20 @@ export class KitchenView {
         grid.cols,
         grid.rows,
       );
+
+      // "Counter + prop on top" stations (dish rack, cutting board): a counter
+      // base with the station's prop seated on its surface.
+      const topProp = COUNTER_TOP_PROPS[cell.station];
+      if (topProp) {
+        addCounterBase(x, z);
+        const prop = props.get(topProp);
+        if (prop) {
+          const mesh = prop.clone();
+          mesh.position.set(x, COUNTER_HEIGHT, z); // base sits on the counter top
+          this.root.add(mesh);
+        }
+        return;
+      }
 
       // Prefer a real KayKit prop; fall back to the colored box for stations
       // that don't have a model yet. Both are placed by their base on y=0.
@@ -97,13 +151,7 @@ export class KitchenView {
         return;
       }
 
-      const box = new THREE.Mesh(counterGeo, materialFor(cell.station));
-      // Box is centered on its origin, so lift it by half its height to rest
-      // its base on the floor (y=0).
-      box.position.set(x, COUNTER_HEIGHT / 2, z);
-      box.castShadow = true; // stations throw shadows...
-      box.receiveShadow = true; // ...and catch the player's/each other's
-      this.root.add(box);
+      addBox(cell.station, x, z);
     });
 
     // --- Tile grid overlay (TEMPORARY visualization) ----------------------

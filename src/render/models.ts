@@ -16,12 +16,19 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import type { StationType, ItemType } from '../world/types';
+import type { StationType, FoodType } from '../world/types';
 import { CELL_SIZE } from '../world/coords';
 
 /** Target size (largest dimension, world units) for a carryable item, so a
  * carrot reads at a sensible scale held in hand or sitting on a counter. */
 const ITEM_SIZE = 0.5;
+
+/**
+ * The renderable item atoms: every food plus the plate. The world's `Item`
+ * (food | plate-with-contents) is composed from these by itemMesh.ts — a plate
+ * mesh is the plate model with its `contents` foods cloned and stacked on top.
+ */
+export type ItemModelType = FoodType | 'plate';
 
 /**
  * Which glTF file backs each station type. Partial on purpose: stations missing
@@ -39,18 +46,40 @@ const STATION_MODEL_FILES: Partial<Record<StationType, string>> = {
 };
 
 /**
- * Which glTF file backs each carryable item. Total (not Partial): every ItemType
- * must have a model, so adding an item in types.ts forces you to supply one here.
+ * Which glTF file backs each renderable item atom. Total (not Partial): every
+ * food (and the plate) must have a model, so adding one in types.ts forces you
+ * to supply art here.
  */
-const ITEM_MODEL_FILES: Record<ItemType, string> = {
+const ITEM_MODEL_FILES: Record<ItemModelType, string> = {
   carrot: '/models/food_ingredient_carrot.gltf',
+  carrotChopped: '/models/food_ingredient_carrot_chopped.gltf',
+  carrotPieces: '/models/food_ingredient_carrot_pieces.gltf',
+  plate: '/models/plate.gltf',
+};
+
+/**
+ * Decorative props that aren't carryable items or stations of their own — they
+ * sit on top of a station mesh (the dish rack, the cutting board, the knife
+ * stuck in it). Seated/scaled like items (not floor-filling); `size` is the
+ * target largest-dimension in world units so each prop reads at a sane scale.
+ */
+const PROP_MODEL_FILES: Record<PropType, { url: string; size: number }> = {
+  dishrack: { url: '/models/dishrack_plates.gltf', size: 0.65 },
+  cuttingboard: { url: '/models/cuttingboard.gltf', size: 0.85 },
+  knife: { url: '/models/knife.gltf', size: 0.45 },
 };
 
 /** A loaded, normalized prop ready to be cloned once per cell. */
 export type StationModels = Map<StationType, THREE.Object3D>;
 
 /** A loaded, normalized item ready to be cloned (held or placed on a counter). */
-export type ItemModels = Map<ItemType, THREE.Object3D>;
+export type ItemModels = Map<ItemModelType, THREE.Object3D>;
+
+/** A decorative prop type that rides on top of a station mesh. */
+export type PropType = 'dishrack' | 'cuttingboard' | 'knife';
+
+/** A loaded, normalized decoration ready to be cloned and seated on a station. */
+export type PropModels = Map<PropType, THREE.Object3D>;
 
 /**
  * Load every mapped station model in parallel, normalize it, and return the
@@ -85,12 +114,36 @@ export async function loadItemModels(): Promise<ItemModels> {
   const loader = new GLTFLoader();
   const models: ItemModels = new Map();
 
-  const entries = Object.entries(ITEM_MODEL_FILES) as [ItemType, string][];
+  const entries = Object.entries(ITEM_MODEL_FILES) as [ItemModelType, string][];
 
   await Promise.all(
     entries.map(async ([item, url]) => {
       const gltf = await loader.loadAsync(url);
       models.set(item, normalizeItem(gltf.scene));
+    }),
+  );
+
+  return models;
+}
+
+/**
+ * Load decorative props (the dish rack) the same way as items — item-scaled and
+ * re-seated so the base sits at y=0 — so a caller can drop one onto a station's
+ * surface (e.g. a counter top) with just a position.
+ */
+export async function loadPropModels(): Promise<PropModels> {
+  const loader = new GLTFLoader();
+  const models: PropModels = new Map();
+
+  const entries = Object.entries(PROP_MODEL_FILES) as [
+    PropType,
+    { url: string; size: number },
+  ][];
+
+  await Promise.all(
+    entries.map(async ([prop, { url, size }]) => {
+      const gltf = await loader.loadAsync(url);
+      models.set(prop, normalizeItem(gltf.scene, size));
     }),
   );
 
@@ -133,12 +186,15 @@ function normalize(scene: THREE.Object3D): THREE.Object3D {
  * a surface (counter top) or hand point and the item rests correctly — no
  * per-call offset math. Returns the wrapper.
  */
-function normalizeItem(scene: THREE.Object3D): THREE.Object3D {
+function normalizeItem(
+  scene: THREE.Object3D,
+  targetSize: number = ITEM_SIZE,
+): THREE.Object3D {
   const size = new THREE.Vector3();
   new THREE.Box3().setFromObject(scene).getSize(size);
 
   const largest = Math.max(size.x, size.y, size.z);
-  if (largest > 0) scene.scale.setScalar(ITEM_SIZE / largest);
+  if (largest > 0) scene.scale.setScalar(targetSize / largest);
 
   // Recenter on x/z and drop the base to y=0 (food meshes are centered on their
   // own origin, so min.y is negative before this).

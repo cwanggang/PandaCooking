@@ -25,19 +25,45 @@ export type StationType =
   | 'barrel' // raw-ingredient storage
   | 'stove' // cooking
   | 'cuttingBoard' // chopping
-  | 'plate' // clean-plate dispenser
+  | 'dishrack' // clean-plate dispenser (counter + dish rack of plates)
   | 'delivery' // finished-food drop-off
   | 'trash'; // discard items
 
 /**
- * A carryable item — something the player can hold and put down. Just the raw
- * carrot for now.
+ * A food/ingredient — the atomic edible things that can sit on a counter, be
+ * held, or be piled onto a plate. A carrot has three forms along the chopping
+ * pipeline: raw -> chopped (a mid-chop appearance) -> pieces (the result you
+ * carry away).
  *
- * EXTENSION POINT: add ingredients/plates/pots here (e.g. 'carrotChopped',
- * 'plate', 'pot'). The item->model map in models.ts is keyed by this, so a new
- * item forces you to give it a model (or the type-check fails).
+ * EXTENSION POINT: add ingredients here (e.g. 'onion'). The food->model map in
+ * models.ts is keyed by this, so a new food forces you to give it a model (or
+ * the type-check fails).
  */
-export type ItemType = 'carrot';
+export type FoodType = 'carrot' | 'carrotChopped' | 'carrotPieces';
+
+/**
+ * A carryable item — something the player can hold and put down. Two shapes:
+ *   - `food`: a single ingredient.
+ *   - `plate`: a container that carries a (possibly empty) list of foods. Its
+ *     `contents` travel with the plate wherever it goes (held, or resting on a
+ *     counter), so picking a plate up takes its food with it automatically.
+ *
+ * EXTENSION POINT: add new item shapes here (e.g. a 'pot' with cooking state).
+ */
+export type Item =
+  | { kind: 'food'; food: FoodType }
+  | { kind: 'plate'; contents: FoodType[] };
+
+/**
+ * A timed, automatic process running at a station (chopping now; cooking
+ * later). The world's update(dt) advances `elapsed` each tick; when it reaches
+ * `duration` the station finalizes (see stations.ts completeProcess). The
+ * renderer draws a progress bar from `elapsed / duration`.
+ */
+export interface TimedProcess {
+  elapsed: number; // seconds elapsed so far
+  duration: number; // total seconds the process takes
+}
 
 /**
  * The four cardinal directions the player can face/move.
@@ -77,9 +103,17 @@ export interface Cell {
   station: StationType | null;
 
   /**
-   * The item resting on this cell, or null if empty. Only counters use this for
-   * now (you can put a carrot down on a counter); other cells stay null. The
-   * renderer reads it to draw items sitting on surfaces.
+   * The item resting on this cell, or null if empty. Counters hold a carrot or
+   * a plate of food; a cutting board holds the single food being processed.
+   * Other cells stay null. The renderer reads it to draw items on surfaces.
    */
-  heldItem: ItemType | null;
+  heldItem: Item | null;
+
+  /**
+   * The timed process running at this station, or null when idle. Only the
+   * cutting board uses it for now (chopping); the stove will later. EXTENSION
+   * POINT realized: stations that gain time-based behavior hang it here, and
+   * world.update(dt) advances it.
+   */
+  process: TimedProcess | null;
 }

@@ -10,17 +10,18 @@
 
 import * as THREE from 'three';
 import type { Grid } from '../world/grid';
-import type { ItemType } from '../world/types';
 import type { ItemModels } from './models';
+import { buildItemMesh, itemSignature } from './itemMesh';
 import { gridToWorld } from '../world/coords';
 
 /** Height an item rests at — the top of a counter (~0.5 high), so the item's
  * base (seated at y=0 by models.ts) sits on the surface. */
 const ITEM_REST_HEIGHT = 0.5;
 
-/** What we're currently drawing at a cell, so we only rebuild on change. */
+/** What we're currently drawing at a cell, so we only rebuild on change. The
+ * signature encodes a plate's contents, so piling food on it forces a rebuild. */
 interface PlacedItem {
-  type: ItemType;
+  signature: string;
   mesh: THREE.Object3D;
 }
 
@@ -55,17 +56,18 @@ export class ItemsView {
 
     grid.forEach((cell) => {
       if (cell.heldItem === null) return;
+      // The cutting board draws its own food (with the mid-chop swap) in
+      // CuttingBoardView, so skip it here to avoid a double-render.
+      if (cell.station === 'cuttingBoard') return;
       const key = `${cell.pos.col},${cell.pos.row}`;
       seen.add(key);
 
+      const signature = itemSignature(cell.heldItem);
       const existing = this.placed.get(key);
-      if (existing && existing.type === cell.heldItem) return; // already correct
-      if (existing) this.remove(key); // wrong type: rebuild
+      if (existing && existing.signature === signature) return; // already correct
+      if (existing) this.remove(key); // changed (e.g. food added): rebuild
 
-      const model = this.itemModels.get(cell.heldItem);
-      if (!model) return; // no art for this item (shouldn't happen)
-
-      const mesh = model.clone();
+      const mesh = buildItemMesh(cell.heldItem, this.itemModels);
       const { x, z } = gridToWorld(
         cell.pos.col,
         cell.pos.row,
@@ -74,7 +76,7 @@ export class ItemsView {
       );
       mesh.position.set(x, ITEM_REST_HEIGHT, z);
       this.scene.add(mesh);
-      this.placed.set(key, { type: cell.heldItem, mesh });
+      this.placed.set(key, { signature, mesh });
     });
 
     // Remove meshes for cells that no longer hold an item.

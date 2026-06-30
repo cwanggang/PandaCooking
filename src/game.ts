@@ -16,7 +16,8 @@ import { KitchenView } from './render/kitchenView';
 import { PlayerView } from './render/playerView';
 import { HighlightView } from './render/highlightView';
 import { ItemsView } from './render/itemsView';
-import type { StationModels, ItemModels } from './render/models';
+import { CuttingBoardView } from './render/cuttingBoardView';
+import type { StationModels, ItemModels, PropModels } from './render/models';
 
 /**
  * Fixed simulation step: 60 logic ticks per second.
@@ -41,6 +42,7 @@ export class Game {
   private readonly playerView: PlayerView;
   private readonly highlightView: HighlightView;
   private readonly itemsView: ItemsView;
+  private readonly cuttingBoardView: CuttingBoardView;
 
   private readonly input: InputSource;
 
@@ -56,6 +58,7 @@ export class Game {
     input: InputSource,
     models: StationModels,
     itemModels: ItemModels,
+    propModels: PropModels,
   ) {
     this.input = input;
     // Build the renderer from the world: views read the grid to size themselves.
@@ -68,6 +71,7 @@ export class Game {
       this.world.grid,
       this.sceneView.scene,
       models,
+      propModels,
     );
     this.playerView = new PlayerView(
       this.sceneView.scene,
@@ -83,6 +87,14 @@ export class Game {
     this.itemsView = new ItemsView(
       this.sceneView.scene,
       itemModels,
+      this.world.grid.cols,
+      this.world.grid.rows,
+    );
+    this.cuttingBoardView = new CuttingBoardView(
+      this.sceneView.scene,
+      this.world.grid,
+      itemModels,
+      propModels,
       this.world.grid.cols,
       this.world.grid.rows,
     );
@@ -127,6 +139,8 @@ export class Game {
     this.highlightView.sync(this.world.selectedCell());
     // Draw items resting on counters (reconciled against the grid).
     this.itemsView.sync(this.world.grid);
+    // Draw cutting-board dynamics (food, knife, chop progress bar).
+    this.cuttingBoardView.sync(this.world.grid);
     this.sceneView.render();
 
     this.rafId = requestAnimationFrame(this.frame);

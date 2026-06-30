@@ -10,8 +10,9 @@
 
 import * as THREE from 'three';
 import type { Player } from '../world/player';
-import type { Facing, ItemType } from '../world/types';
+import type { Facing } from '../world/types';
 import type { ItemModels } from './models';
+import { buildItemMesh, itemSignature } from './itemMesh';
 import { gridToWorld } from '../world/coords';
 
 const BODY_RADIUS = 0.3;
@@ -42,13 +43,16 @@ export class PlayerView {
   private readonly root: THREE.Group;
   private readonly cols: number;
   private readonly rows: number;
+  private readonly itemModels: ItemModels;
 
   /**
-   * One held-item mesh per item type, parked in front of the panda and hidden.
-   * sync() shows the one matching the player's held item (or none). Preloading
-   * them all avoids cloning/disposing as the carried item changes.
+   * The held-item mesh currently parked in the panda's hands (or null when
+   * empty-handed), plus its signature so we only rebuild when what's carried
+   * changes. A plate can't be pre-cloned because its contents vary, so we build
+   * on change instead of toggling visibility.
    */
-  private readonly heldItems = new Map<ItemType, THREE.Object3D>();
+  private heldMesh: THREE.Object3D | null = null;
+  private heldSignature = '';
 
   constructor(
     scene: THREE.Scene,
@@ -58,6 +62,7 @@ export class PlayerView {
   ) {
     this.cols = cols;
     this.rows = rows;
+    this.itemModels = itemModels;
     this.root = new THREE.Group();
 
     const body = new THREE.Mesh(
@@ -79,19 +84,8 @@ export class PlayerView {
     nose.castShadow = true;
     this.root.add(nose);
 
-    // Held-item meshes: clone each item model, seat it in the panda's hands, and
-    // add it hidden. sync() toggles which (if any) is visible.
-    for (const [type, model] of itemModels) {
-      const held = model.clone();
-      held.position.set(
-        HELD_ITEM_OFFSET.x,
-        HELD_ITEM_OFFSET.y,
-        HELD_ITEM_OFFSET.z,
-      );
-      held.visible = false;
-      this.root.add(held);
-      this.heldItems.set(type, held);
-    }
+    // The held item is built lazily in sync() (see heldMesh): a plate's mesh
+    // depends on its contents, so we can't pre-clone a fixed set here.
 
     scene.add(this.root);
   }
@@ -111,9 +105,26 @@ export class PlayerView {
     this.root.position.set(x, 0, z);
     this.root.rotation.y = FACING_YAW[player.facing];
 
-    // Show only the held item matching what the player carries (or none).
-    for (const [type, mesh] of this.heldItems) {
-      mesh.visible = player.heldItem === type;
+    // Rebuild the held mesh only when what's carried changes (including a
+    // plate's contents). The mesh is a child of the panda group, so it inherits
+    // position + facing automatically.
+    const signature = itemSignature(player.heldItem);
+    if (signature === this.heldSignature) return;
+    this.heldSignature = signature;
+
+    if (this.heldMesh) {
+      this.root.remove(this.heldMesh);
+      this.heldMesh = null;
+    }
+    if (player.heldItem !== null) {
+      const mesh = buildItemMesh(player.heldItem, this.itemModels);
+      mesh.position.set(
+        HELD_ITEM_OFFSET.x,
+        HELD_ITEM_OFFSET.y,
+        HELD_ITEM_OFFSET.z,
+      );
+      this.root.add(mesh);
+      this.heldMesh = mesh;
     }
   }
 }

@@ -8,7 +8,7 @@
  * types.ts and TypeScript forces you to decide what INTERACT does with it here.
  */
 
-import type { Cell, ItemType } from './types';
+import type { Cell, FoodType, Item } from './types';
 import type { Player } from './player';
 
 /** What an INTERACT did, so the caller can report it without doing I/O. */
@@ -16,9 +16,41 @@ export interface InteractionResult {
   message: string;
 }
 
-/** Which ingredient a crate dispenses. Just the carrot for now; later this will
- * vary per crate (carrot/onion/...). */
-const CRATE_ITEM: ItemType = 'carrot';
+/** Which food a crate dispenses. Just the carrot for now; later this will vary
+ * per crate (carrot/onion/...). */
+const CRATE_FOOD: FoodType = 'carrot';
+
+/** How long (seconds) a chop takes on the cutting board. */
+export const CHOP_DURATION = 1;
+
+/** A short human-readable name for an item, for INTERACT report messages. */
+function label(item: Item): string {
+  if (item.kind === 'food') return item.food;
+  return item.contents.length > 0 ? 'plate of food' : 'plate';
+}
+
+/** Whether a food can be chopped on the cutting board (only raw carrot today). */
+function isChoppable(food: FoodType): boolean {
+  return food === 'carrot';
+}
+
+/** What a food becomes once a chop completes. Non-choppable foods are unchanged
+ * (defensive — only choppable foods ever start a chop). */
+function chopResult(food: FoodType): FoodType {
+  return food === 'carrot' ? 'carrotPieces' : food;
+}
+
+/**
+ * Finalize a station's just-completed process. Called by world.update(dt) when
+ * a cell's process reaches its duration. Clears the process and applies its
+ * effect — for the cutting board, the food on it becomes its chopped result.
+ */
+export function completeProcess(cell: Cell): void {
+  cell.process = null;
+  if (cell.station === 'cuttingBoard' && cell.heldItem?.kind === 'food') {
+    cell.heldItem = { kind: 'food', food: chopResult(cell.heldItem.food) };
+  }
+}
 
 /**
  * Run the INTERACT between the player and the faced station cell. Mutates
@@ -31,32 +63,76 @@ export function interactWithStation(
 ): InteractionResult | null {
   switch (cell.station) {
     case 'barrel':
-      // Ingredient crate: an empty-handed grab spawns the crate's item into the
+      // Ingredient crate: an empty-handed grab spawns the crate's food into the
       // player's hands. If already carrying something, do nothing.
       if (player.heldItem !== null) return null;
-      player.heldItem = CRATE_ITEM;
-      return { message: `grabbed ${CRATE_ITEM} from crate` };
+      player.heldItem = { kind: 'food', food: CRATE_FOOD };
+      return { message: `grabbed ${CRATE_FOOD} from crate` };
+
+    case 'dishrack':
+      // Clean-plate dispenser: an empty-handed grab spawns a fresh empty plate.
+      // Unlimited supply, mirroring the barrel. If already carrying something,
+      // do nothing.
+      if (player.heldItem !== null) return null;
+      player.heldItem = { kind: 'plate', contents: [] };
+      return { message: 'grabbed a plate from the dish rack' };
 
     case 'counter': {
-      // Plain surface: put down if hands full and the surface is empty; pick up
-      // if hands empty and the surface has something. Otherwise no-op.
-      if (player.heldItem !== null && cell.heldItem === null) {
-        cell.heldItem = player.heldItem;
+      const held = player.heldItem;
+      const onCounter = cell.heldItem;
+
+      // Pile food onto a plate already resting on the counter. Unlimited.
+      if (held?.kind === 'food' && onCounter?.kind === 'plate') {
+        onCounter.contents.push(held.food);
         player.heldItem = null;
-        return { message: `placed ${cell.heldItem} on counter` };
+        return { message: `added ${held.food} to plate` };
       }
-      if (player.heldItem === null && cell.heldItem !== null) {
-        player.heldItem = cell.heldItem;
+      // Put down onto an empty counter.
+      if (held !== null && onCounter === null) {
+        cell.heldItem = held;
+        player.heldItem = null;
+        return { message: `placed ${label(held)} on counter` };
+      }
+      // Pick up from the counter (a plate comes with its contents).
+      if (held === null && onCounter !== null) {
+        player.heldItem = onCounter;
         cell.heldItem = null;
-        return { message: `picked up ${player.heldItem} from counter` };
+        return { message: `picked up ${label(onCounter)} from counter` };
       }
       return null;
     }
 
-    // Special stations don't accept the carrot yet (no placing items here).
+    case 'cuttingBoard': {
+      const held = player.heldItem;
+      const onBoard = cell.heldItem;
+
+      // While a chop is running, the board is busy — ignore interacts.
+      if (cell.process !== null) return null;
+
+      // 1. Place a single food onto an empty board (plates not allowed here).
+      if (onBoard === null && held?.kind === 'food') {
+        cell.heldItem = held;
+        player.heldItem = null;
+        return { message: `placed ${held.food} on cutting board` };
+      }
+      // 2. Start chopping: an empty-handed interact on a board holding a raw,
+      //    choppable food. The board's knife "leaves" (render hides it) and the
+      //    chop runs over CHOP_DURATION in world.update.
+      if (held === null && onBoard?.kind === 'food' && isChoppable(onBoard.food)) {
+        cell.process = { elapsed: 0, duration: CHOP_DURATION };
+        return { message: `started chopping ${onBoard.food}` };
+      }
+      // 3. Pick up whatever rests on the board (e.g. the finished pieces).
+      if (held === null && onBoard !== null) {
+        player.heldItem = onBoard;
+        cell.heldItem = null;
+        return { message: `picked up ${label(onBoard)} from cutting board` };
+      }
+      return null;
+    }
+
+    // Special stations don't accept items yet (no placing/picking here).
     case 'stove':
-    case 'cuttingBoard':
-    case 'plate':
     case 'delivery':
     case 'trash':
       return null;

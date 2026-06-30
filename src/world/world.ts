@@ -9,7 +9,7 @@
 
 import { Grid } from './grid';
 import { Player } from './player';
-import { interactWithStation } from './stations';
+import { interactWithStation, completeProcess } from './stations';
 import { KITCHEN_LAYOUT, PLAYER_SPAWN } from './layout';
 import type { Intent } from './intents';
 import type { Cell, GridPos, StationType } from './types';
@@ -76,14 +76,17 @@ export class World {
   }
 
   /**
-   * Advance continuous simulation by a fixed timestep. A no-op today — movement
-   * is event-driven, not time-driven — but it's the deterministic tick the game
-   * loop calls in fixed quanta.
+   * Advance continuous simulation by a fixed timestep. Movement is event-driven,
+   * but timed station processes (chopping now, cooking later) tick here, so the
+   * fixed quanta keep them deterministic.
    *
-   * EXTENSION POINT: round timers, cooking/burning progress, and other
-   * time-based station logic advance here using `dt`.
+   * EXTENSION POINT: round timers and other time-based logic also advance here.
    */
-  update(_dt: number): void {
-    // intentionally empty for now
+  update(dt: number): void {
+    this.grid.forEach((cell) => {
+      if (cell.process === null) return;
+      cell.process.elapsed += dt;
+      if (cell.process.elapsed >= cell.process.duration) completeProcess(cell);
+    });
   }
 }

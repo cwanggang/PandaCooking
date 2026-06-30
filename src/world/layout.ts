@@ -7,8 +7,8 @@
  *   'C' = counter        (light tan — regular surface, can hold items)
  *   'B' = barrel         (brown   — raw-ingredient storage)
  *   'S' = stove          (red     — cooking)
- *   'X' = cutting board  (orange  — chopping)
- *   'P' = plate          (white   — clean-plate dispenser)
+ *   'X' = cutting board  (counter — chopping, board + knife on top)
+ *   'P' = dish rack      (counter — clean-plate dispenser, plates on top)
  *   'D' = delivery       (green   — finished-food drop-off)
  *   'T' = trash          (blue    — discard items)
  *
@@ -53,7 +53,7 @@ export const CHAR_TO_STATION: Record<string, StationType> = {
   B: 'barrel',
   S: 'stove',
   X: 'cuttingBoard',
-  P: 'plate',
+  P: 'dishrack',
   D: 'delivery',
   T: 'trash',
 };
