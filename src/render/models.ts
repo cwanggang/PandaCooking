@@ -48,6 +48,7 @@ const STATION_MODEL_FILES: Partial<Record<StationType, string>> = {
   tomatoBarrel: '/models/crate_tomatoes.gltf',
   bunBarrel: '/models/crate_buns.gltf',
   steakBarrel: '/models/crate_steak.gltf',
+  eggBarrel: '/models/crate_eggs.glb',
   stove: '/models/stove_single.gltf',
 };
 
@@ -71,6 +72,8 @@ const ITEM_MODEL_FILES: Record<ItemModelType, string> = {
   steakChopped: '/models/food_ingredient_steak_pieces.gltf',
   burgerUncooked: '/models/food_ingredient_burger_uncooked.gltf',
   burgerCooked: '/models/food_ingredient_burger_cooked.gltf',
+  eggUncooked: '/models/food_ingredient_egg_uncooked.glb',
+  eggCooked: '/models/food_ingredient_egg_cooked.glb',
   plate: '/models/plate.gltf',
   bunBottom: '/models/food_ingredient_bun_bottom.gltf',
   bunTop: '/models/food_ingredient_bun_top.gltf',

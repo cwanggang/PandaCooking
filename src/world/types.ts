@@ -27,6 +27,7 @@ export type StationType =
   | 'tomatoBarrel' // raw-ingredient storage (tomatoes)
   | 'bunBarrel' // raw-ingredient storage (burger buns)
   | 'steakBarrel' // raw-ingredient storage (steak)
+  | 'eggBarrel' // raw-ingredient storage (eggs)
   | 'stove' // cooking
   | 'cuttingBoard' // chopping
   | 'dishrack' // clean-plate dispenser (counter + dish rack of plates)
@@ -62,7 +63,9 @@ export type FoodType =
   | 'steak'
   | 'steakChopped'
   | 'burgerUncooked'
-  | 'burgerCooked';
+  | 'burgerCooked'
+  | 'eggUncooked'
+  | 'eggCooked';
 
 /**
  * A carryable item — something the player can hold and put down. Two shapes:

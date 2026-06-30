@@ -10,6 +10,7 @@
  *   'M' = tomato barrel  (red     — tomato crate)
  *   'U' = bun barrel     (wheat   — burger-bun crate)
  *   'K' = steak barrel   (maroon  — steak crate)
+ *   'E' = egg barrel     (cream   — egg crate)
  *   'S' = stove          (red     — cooking)
  *   'X' = cutting board  (counter — chopping, board + knife on top)
  *   'P' = dish rack      (counter — clean-plate dispenser, plates on top)
@@ -41,7 +42,7 @@ export const KITCHEN_LAYOUT: string[] = [
   'L . . X C X . . C',
   'B . . . . . . . C',
   'M . . . . . . . C',
-  'C C C C C C C C C',
+  'C E C C C C C C C',
 ];
 
 /** The one char that means walkable floor. Everything else is a station. */
@@ -59,6 +60,7 @@ export const CHAR_TO_STATION: Record<string, StationType> = {
   M: 'tomatoBarrel',
   U: 'bunBarrel',
   K: 'steakBarrel',
+  E: 'eggBarrel',
   S: 'stove',
   X: 'cuttingBoard',
   P: 'dishrack',

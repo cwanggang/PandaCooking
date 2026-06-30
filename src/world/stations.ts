@@ -24,6 +24,7 @@ const CRATE_FOOD: Partial<Record<StationType, FoodType>> = {
   tomatoBarrel: 'tomato',
   bunBarrel: 'bun',
   steakBarrel: 'steak',
+  eggBarrel: 'eggUncooked',
 };
 
 /** How long (seconds) a chop takes on the cutting board. */
@@ -51,7 +52,22 @@ const CHOP_RESULT: Partial<Record<FoodType, FoodType>> = {
  * appears here; add a raw->cooked entry to make a new ingredient cookable. */
 const COOK_RESULT: Partial<Record<FoodType, FoodType>> = {
   burgerUncooked: 'burgerCooked',
+  eggUncooked: 'eggCooked',
 };
+
+/** The egg isn't a burger ingredient, so it can't share a plate with a bun
+ * (and a bun can't be added onto a plate that already holds an egg). */
+const EGG_FOODS: ReadonlySet<FoodType> = new Set(['eggUncooked', 'eggCooked']);
+
+/** Whether adding `food` to a plate already holding `contents` is disallowed
+ * because it would put an egg and a burger bun together. */
+function mixesEggAndBun(food: FoodType, contents: FoodType[]): boolean {
+  const addingEgg = EGG_FOODS.has(food);
+  const addingBun = food === 'bun';
+  const hasEgg = contents.some((f) => EGG_FOODS.has(f));
+  const hasBun = contents.includes('bun');
+  return (addingEgg && hasBun) || (addingBun && hasEgg);
+}
 
 /** Whether a food can be chopped on the cutting board. */
 function isChoppable(food: FoodType): boolean {
@@ -105,7 +121,8 @@ export function interactWithStation(
     case 'lettuceBarrel':
     case 'tomatoBarrel':
     case 'bunBarrel':
-    case 'steakBarrel': {
+    case 'steakBarrel':
+    case 'eggBarrel': {
       // Ingredient crate: an empty-handed grab spawns the crate's food into the
       // player's hands. If already carrying something, do nothing.
       if (player.heldItem !== null) return null;
@@ -127,8 +144,10 @@ export function interactWithStation(
       const held = player.heldItem;
       const onCounter = cell.heldItem;
 
-      // Pile food onto a plate already resting on the counter. Unlimited.
+      // Pile food onto a plate already resting on the counter. Unlimited,
+      // except an egg and a burger bun can't share a plate.
       if (held?.kind === 'food' && onCounter?.kind === 'plate') {
+        if (mixesEggAndBun(held.food, onCounter.contents)) return null;
         onCounter.contents.push(held.food);
         player.heldItem = null;
         return { message: `added ${held.food} to plate` };
