@@ -13,24 +13,53 @@ export class StartScreen {
       <div class="start-bg">
         <div class="beach-sky"></div>
         <div class="beach-sun"></div>
-        <div class="beach-clouds"></div>
+        <div class="cloud cloud-1"><div class="cloud-body"></div></div>
+        <div class="cloud cloud-2"><div class="cloud-body"></div></div>
+        <div class="cloud cloud-3"><div class="cloud-body"></div></div>
+        <div class="cloud cloud-4"><div class="cloud-body"></div></div>
+        <div class="cloud cloud-5"><div class="cloud-body"></div></div>
+        <div class="cloud cloud-6"><div class="cloud-body"></div></div>
         <div class="beach-ocean"></div>
         <div class="beach-wave"></div>
+        <div class="beach-wet-sand"></div>
         <div class="beach-sand"></div>
+        <div class="shell shell-1"></div>
+        <div class="shell shell-2"></div>
+        <div class="shell shell-3"></div>
+        <div class="shell shell-4"></div>
+        <div class="shell shell-5"></div>
+        <div class="shell-frag" style="bottom:30%;left:8%;"></div>
+        <div class="shell-frag" style="bottom:20%;left:16%;"></div>
+        <div class="shell-frag" style="bottom:26%;left:35%;"></div>
+        <div class="shell-frag" style="bottom:16%;left:48%;"></div>
+        <div class="shell-frag" style="bottom:33%;left:62%;"></div>
+        <div class="shell-frag" style="bottom:21%;left:75%;"></div>
+        <div class="shell-frag" style="bottom:28%;left:88%;"></div>
+        <div class="shell-frag" style="bottom:14%;left:92%;"></div>
         <div class="beach-cooking">
-          <div class="chef chef-left">
-            <div class="chef-panda">🐼</div>
-            <div class="apron apron-red"></div>
+          <div class="cooking-station">
+            <div class="chef chef-left">
+              <div class="chef-panda">🐼</div>
+              <div class="apron apron-red"></div>
+            </div>
+            <div class="cooking-counter">
+              <div class="counter-top"></div>
+              <div class="counter-leg left"></div>
+              <div class="counter-leg right"></div>
+              <div class="counter-food">🍔</div>
+            </div>
           </div>
-          <div class="cooking-counter">
-            <div class="counter-top"></div>
-            <div class="counter-leg left"></div>
-            <div class="counter-leg right"></div>
-            <div class="counter-food">🍔</div>
-          </div>
-          <div class="chef chef-right">
-            <div class="chef-panda">🐼</div>
-            <div class="apron apron-blue"></div>
+          <div class="cooking-station">
+            <div class="cooking-counter">
+              <div class="counter-top"></div>
+              <div class="counter-leg left"></div>
+              <div class="counter-leg right"></div>
+              <div class="counter-food">🥘</div>
+            </div>
+            <div class="chef chef-right">
+              <div class="chef-panda">🐼</div>
+              <div class="apron apron-blue"></div>
+            </div>
           </div>
         </div>
       </div>

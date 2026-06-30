@@ -170,6 +170,7 @@ export class Game {
     this.stoveView.sync(this.world.grid);
     // Update HUD (timer, score, recipe).
     this.hud.sync(this.world.getState());
+    this.kitchenView.update(frameSeconds);
     this.sceneView.render();
 
     this.rafId = requestAnimationFrame(this.frame);
@@ -181,8 +182,14 @@ export class Game {
     if (this.pendingIntents.length > 0) {
       for (const intent of this.pendingIntents) {
         const report = this.world.applyIntent(intent);
-        if (report && report.message.startsWith('Wrong')) {
-          this.hud.showMessage(report.message, 'error');
+        if (report) {
+          if (report.message.startsWith('Wrong')) {
+            this.hud.showMessage(report.message, 'error');
+          }
+
+          if (report.message.startsWith('discarded')) {
+            this.kitchenView.animateTrash();
+          }
         }
       }
       this.pendingIntents.length = 0; // consumed

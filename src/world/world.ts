@@ -11,6 +11,7 @@ export interface InteractReport {
   message: string;
 }
 
+const GAME_DURATION = 300; // 5 minutes
 const MAX_RECIPES = 3;
 const RECIPE_TIMEOUT = 180;
 const INITIAL_RECIPES = 1;
@@ -36,6 +37,7 @@ export class World {
   readonly player: Player;
 
   score = 0;
+  gameTimeRemaining = GAME_DURATION;
   activeRecipes: ActiveRecipe[] = [];
   private timeToNextRecipe = RECIPE_UNLOCK_INTERVAL;
 
@@ -50,7 +52,7 @@ export class World {
   getState(): GameState {
     return {
       score: this.score,
-      timeRemaining: 0,
+      timeRemaining: this.gameTimeRemaining,
       activeRecipes: this.activeRecipes,
       phase: 'playing',
     };
@@ -83,6 +85,8 @@ export class World {
   }
 
   update(dt: number): void {
+    this.gameTimeRemaining = Math.max(0, this.gameTimeRemaining - dt);
+
     for (let i = 0; i < this.activeRecipes.length; i++) {
       this.activeRecipes[i].timeRemaining -= dt;
       if (this.activeRecipes[i].timeRemaining <= 0) {

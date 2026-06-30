@@ -25,7 +25,7 @@ canvas {
   display: block;
 }
 
-/* HUD overlay */
+/* ── HUD ── */
 #hud {
   position: fixed;
   inset: 0;
@@ -39,43 +39,97 @@ canvas {
   to   { opacity: 0.5; }
 }
 
-.hud-score {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #ffd700;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
-  background: rgba(0,0,0,0.4);
-  padding: 6px 16px;
-  border-radius: 8px;
+@keyframes timerPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
 }
 
-.hud-recipes-row {
+/* ── Game timer (top-center) ── */
+.hud-timer-wrap {
   position: absolute;
-  bottom: 16px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 11;
+}
+
+.hud-timer {
+  font-size: 2.4rem;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.55);
+  padding: 4px 28px;
+  border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(4px);
+  text-align: center;
+  transition: color 0.3s, border-color 0.3s;
+  user-select: none;
+}
+
+.hud-timer.hud-timer-warning {
+  color: #ff4444;
+  border-color: rgba(255,68,68,0.4);
+  animation: pulse 0.5s ease-in-out infinite alternate, timerPulse 0.5s ease-in-out infinite alternate;
+}
+
+/* ── Score (top-right) ── */
+.hud-score {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffd700;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.45);
+  padding: 4px 18px;
+  border-radius: 10px;
+  border: 2px solid rgba(255,215,0,0.2);
+  backdrop-filter: blur(4px);
+  user-select: none;
+}
+
+.hud-score::before {
+  content: '★ ';
+  font-size: 1.2rem;
+}
+
+/* ── Recipe panel (right side) ── */
+.hud-recipes-col {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 11;
 }
 
 .hud-recipe-card {
-  background: rgba(0,0,0,0.65);
-  padding: 10px 18px;
+  background: rgba(0,0,0,0.6);
+  padding: 10px 16px;
   border-radius: 10px;
   text-align: center;
   backdrop-filter: blur(4px);
-  min-width: 180px;
+  border: 2px solid rgba(255,215,0,0.15);
+  min-width: 160px;
+  transition: border-color 0.3s;
+}
+
+.hud-recipe-card:last-child {
+  margin-bottom: 0;
 }
 
 .hud-recipe-timer {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0,0,0,0.6);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   letter-spacing: 2px;
   transition: color 0.3s;
 }
@@ -86,15 +140,16 @@ canvas {
 }
 
 .hud-recipe-name {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #ffd700;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
 .hud-ingredients {
-  font-size: 0.8rem;
-  color: #ccc;
+  font-size: 0.75rem;
+  color: #aaa;
 }
 
 /* ── Start Screen ──────────────────────────────────────────── */
@@ -147,50 +202,292 @@ canvas {
   to   { box-shadow: 0 0 90px rgba(255,215,0,0.5); }
 }
 
-.beach-clouds {
+/* ── Clouds ── */
+
+.cloud {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.cloud-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  box-shadow:
+    0 8px 24px rgba(255,255,255,0.15),
+    inset 0 -4px 12px rgba(200,200,220,0.2);
+}
+
+.cloud-body::before {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+  box-shadow: inherit;
+}
+
+.cloud-body::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+  box-shadow: inherit;
+}
+
+.cloud-1 {
+  top: 10%;
+  left: 0;
+  width: 130px;
+  height: 36px;
+  animation: cloudDrift 30s linear infinite;
+  animation-delay: -8s;
+}
+.cloud-1 .cloud-body {
+  border-radius: 36px;
+}
+.cloud-1 .cloud-body::before {
+  width: 50px; height: 50px;
+  top: -22px; left: 14px;
+}
+.cloud-1 .cloud-body::after {
+  width: 65px; height: 58px;
+  top: -30px; left: 40px;
+}
+
+.cloud-2 {
+  top: 18%;
+  left: 0;
+  width: 100px;
+  height: 28px;
+  animation: cloudDrift 22s linear infinite;
+  animation-delay: -15s;
+}
+.cloud-2 .cloud-body {
+  border-radius: 28px;
+}
+.cloud-2 .cloud-body::before {
+  width: 40px; height: 40px;
+  top: -18px; left: 10px;
+}
+.cloud-2 .cloud-body::after {
+  width: 50px; height: 46px;
+  top: -25px; left: 28px;
+}
+
+.cloud-3 {
+  top: 7%;
+  left: 0;
+  width: 160px;
+  height: 40px;
+  animation: cloudDrift 35s linear infinite;
+  animation-delay: -3s;
+}
+.cloud-3 .cloud-body {
+  border-radius: 40px;
+  background: rgba(255, 255, 255, 0.7);
+}
+.cloud-3 .cloud-body::before {
+  width: 65px; height: 60px;
+  top: -28px; left: 18px;
+}
+.cloud-3 .cloud-body::after {
+  width: 80px; height: 68px;
+  top: -36px; left: 50px;
+}
+
+.cloud-4 {
+  top: 25%;
+  left: 0;
+  width: 85px;
+  height: 24px;
+  animation: cloudDrift 18s linear infinite;
+  animation-delay: -20s;
+}
+.cloud-4 .cloud-body {
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.cloud-4 .cloud-body::before {
+  width: 32px; height: 32px;
+  top: -14px; left: 8px;
+}
+.cloud-4 .cloud-body::after {
+  width: 42px; height: 38px;
+  top: -20px; left: 24px;
+}
+
+.cloud-5 {
+  top: 14%;
+  left: 0;
+  width: 70px;
+  height: 20px;
+  animation: cloudDrift 15s linear infinite;
+  animation-delay: -10s;
+}
+.cloud-5 .cloud-body {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.cloud-5 .cloud-body::before {
+  width: 28px; height: 28px;
+  top: -12px; left: 6px;
+}
+.cloud-5 .cloud-body::after {
+  width: 36px; height: 32px;
+  top: -18px; left: 20px;
+}
+
+.cloud-6 {
+  top: 30%;
+  left: 0;
+  width: 115px;
+  height: 32px;
+  animation: cloudDrift 25s linear infinite;
+  animation-delay: -25s;
+}
+.cloud-6 .cloud-body {
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.cloud-6 .cloud-body::before {
+  width: 42px; height: 42px;
+  top: -20px; left: 12px;
+}
+.cloud-6 .cloud-body::after {
+  width: 54px; height: 50px;
+  top: -28px; left: 34px;
+}
+
+@keyframes cloudDrift {
+  from { transform: translateX(-300px); }
+  to   { transform: translateX(100vw); }
+}
+
+/* ── Ocean ── */
+.beach-ocean {
+  position: absolute;
+  bottom: 33%;
+  left: 0;
+  right: 0;
+  height: 22%;
+  background: linear-gradient(180deg,
+    #4a9fd4 0%, #3a8cc4 25%, #2a7ab0 55%, #1a5a8a 100%);
+  overflow: hidden;
+}
+
+/* Subtle wave ripple texture */
+.beach-ocean::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    rgba(255,255,255,0.08) 1px,
+    transparent 2px,
+    transparent 30px,
+    rgba(255,255,255,0.05) 31px,
+    transparent 32px
+  );
+  animation: oceanRipple 8s linear infinite;
+}
+
+@keyframes oceanRipple {
+  from { transform: translateY(0); }
+  to   { transform: translateY(30px); }
+}
+
+/* Sun reflection */
+.beach-ocean::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,220,150,0.15) 30%,
+    rgba(255,220,150,0.25) 45%,
+    rgba(255,220,150,0.05) 55%,
+    transparent 100%
+  );
+  animation: sunGlint 5s ease-in-out infinite alternate;
+}
+
+@keyframes sunGlint {
+  from { opacity: 0.3; transform: translateX(-5%); }
+  to   { opacity: 0.8; transform: translateX(5%); }
+}
+
+/* ── Waves ── */
+
+/* Wave crests that lap onto the sand */
+.beach-wave {
+  position: absolute;
+  bottom: 30%;
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 3;
+  background:
+    radial-gradient(ellipse 90px 10px at 8% 60%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(ellipse 70px 8px at 22% 50%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(ellipse 100px 12px at 38% 65%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(ellipse 60px 7px at 50% 45%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(ellipse 80px 9px at 65% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(ellipse 70px 8px at 78% 50%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(ellipse 90px 11px at 92% 55%, rgba(255,255,255,0.35) 0%, transparent 100%);
+  animation: waveLap 4s ease-in-out infinite alternate;
+}
+
+@keyframes waveLap {
+  from { transform: translateY(0); opacity: 0.6; }
+  to   { transform: translateY(-10px); opacity: 1; }
+}
+
+/* Secondary wave — slightly different timing */
+.beach-wave::after {
+  content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 120px 30px at 25% 15%, rgba(255,255,255,0.3) 0%, transparent 100%),
-    radial-gradient(ellipse 100px 25px at 60% 12%, rgba(255,255,255,0.2) 0%, transparent 100%),
-    radial-gradient(ellipse 80px 20px at 75% 18%, rgba(255,255,255,0.15) 0%, transparent 100%);
-  animation: cloudsDrift 20s linear infinite;
+    radial-gradient(ellipse 60px 8px at 15% 40%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(ellipse 80px 10px at 30% 55%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(ellipse 50px 6px at 45% 70%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(ellipse 90px 10px at 60% 40%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(ellipse 60px 7px at 75% 60%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(ellipse 70px 8px at 88% 45%, rgba(255,255,255,0.15) 0%, transparent 100%);
+  animation: waveLap2 5s ease-in-out infinite alternate;
 }
 
-@keyframes cloudsDrift {
-  from { transform: translateX(0); }
-  to   { transform: translateX(40px); }
+@keyframes waveLap2 {
+  from { transform: translateY(4px); opacity: 0.4; }
+  to   { transform: translateY(-6px); opacity: 0.7; }
 }
 
-.beach-ocean {
+/* Wet sand edge where waves reach */
+.beach-wet-sand {
   position: absolute;
-  bottom: 35%;
+  bottom: 0;
   left: 0;
   right: 0;
-  height: 20%;
+  height: 5%;
+  z-index: 1;
   background: linear-gradient(180deg,
-    #3a8cc4 0%, #2a7ab0 40%, #1a6890 100%);
-}
-
-.beach-wave {
-  position: absolute;
-  bottom: 34%;
-  left: 0;
-  right: 0;
-  height: 8px;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(255,255,255,0.15) 0px,
-    rgba(255,255,255,0.15) 30px,
-    transparent 30px,
-    transparent 60px
+    rgba(60,50,30,0.25) 0%,
+    transparent 100%
   );
-  animation: waveMove 3s ease-in-out infinite alternate;
+  animation: wetSand 4s ease-in-out infinite alternate;
 }
 
-@keyframes waveMove {
-  from { transform: translateX(0); opacity: 0.6; }
-  to   { transform: translateX(20px); opacity: 1; }
+@keyframes wetSand {
+  from { height: 5%; opacity: 0.6; }
+  to   { height: 8%; opacity: 1; }
 }
 
 .beach-sand {
@@ -198,27 +495,105 @@ canvas {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 36%;
+  height: 34%;
   background: linear-gradient(180deg,
-    #e8c878 0%, #dbb86a 30%, #c8a050 100%);
-  border-radius: 0 0 0 0;
+    #e8c878 0%, #dbb86a 20%, #c8a050 50%, #b89040 100%);
 }
 
-.beach-sand::before {
+/* Sand grain texture */
+.beach-sand::after {
   content: '';
   position: absolute;
-  top: -8px;
-  left: 0;
-  right: 0;
-  height: 16px;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(200,160,80,0.3) 0px,
-    rgba(200,160,80,0.3) 20px,
-    transparent 20px,
-    transparent 40px
-  );
-  border-radius: 50% 50% 0 0;
+  inset: 0;
+  background:
+    radial-gradient(circle 1px at 10% 20%, rgba(160,120,60,0.2) 0%, transparent 100%),
+    radial-gradient(circle 1px at 25% 40%, rgba(200,170,100,0.15) 0%, transparent 100%),
+    radial-gradient(circle 1.5px at 40% 15%, rgba(160,120,60,0.15) 0%, transparent 100%),
+    radial-gradient(circle 1px at 55% 50%, rgba(200,170,100,0.2) 0%, transparent 100%),
+    radial-gradient(circle 1.5px at 70% 25%, rgba(160,120,60,0.15) 0%, transparent 100%),
+    radial-gradient(circle 1px at 85% 60%, rgba(200,170,100,0.2) 0%, transparent 100%),
+    radial-gradient(circle 1px at 15% 70%, rgba(160,120,60,0.15) 0%, transparent 100%),
+    radial-gradient(circle 1.5px at 35% 80%, rgba(200,170,100,0.15) 0%, transparent 100%),
+    radial-gradient(circle 1px at 60% 90%, rgba(160,120,60,0.2) 0%, transparent 100%),
+    radial-gradient(circle 1px at 80% 75%, rgba(200,170,100,0.15) 0%, transparent 100%),
+    radial-gradient(circle 1px at 90% 35%, rgba(160,120,60,0.15) 0%, transparent 100%),
+    radial-gradient(circle 1.5px at 50% 10%, rgba(200,170,100,0.15) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* ── Shells on the sand ── */
+
+.shell {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Shell shape: oval with a spiral-like gradient */
+.shell-1 {
+  bottom: 28%;
+  left: 12%;
+  width: 14px;
+  height: 10px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: linear-gradient(135deg, #f5e6d0 0%, #e8d5b8 40%, #d4b896 100%);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4);
+  transform: rotate(-15deg);
+}
+
+.shell-2 {
+  bottom: 22%;
+  left: 22%;
+  width: 10px;
+  height: 8px;
+  border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+  background: linear-gradient(135deg, #eddcc4 0%, #dcc8aa 50%, #c4b090 100%);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  transform: rotate(25deg);
+}
+
+.shell-3 {
+  bottom: 32%;
+  right: 25%;
+  width: 18px;
+  height: 12px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(ellipse at 30% 40%, #f5e6d0 0%, #e0c8a8 50%, #c8ae88 100%);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.3);
+  transform: rotate(10deg);
+}
+
+.shell-4 {
+  bottom: 18%;
+  right: 15%;
+  width: 8px;
+  height: 6px;
+  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  background: #f0ddc4;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  transform: rotate(-30deg);
+}
+
+.shell-5 {
+  bottom: 25%;
+  left: 55%;
+  width: 12px;
+  height: 8px;
+  border-radius: 50% 50% 50% 50% / 55% 55% 45% 45%;
+  background: linear-gradient(145deg, #f5e8d4 0%, #e0ccb0 100%);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3);
+  transform: rotate(-5deg);
+}
+
+/* Tiny shell fragments (scattered dots) */
+.shell-frag {
+  position: absolute;
+  z-index: 2;
+  width: 3px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(220,200,170,0.5);
+  pointer-events: none;
 }
 
 .start-controls {
@@ -319,8 +694,14 @@ canvas {
   transform: translateX(-50%);
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: 60px;
   z-index: 2;
+}
+
+.cooking-station {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .chef {

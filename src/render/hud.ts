@@ -1,9 +1,10 @@
 import type { GameState, ActiveRecipe } from '../world/types';
 
-const NOTIFICATION_DURATION = 2500; // ms
+const NOTIFICATION_DURATION = 2500;
 
 export class HUD {
   private root: HTMLDivElement;
+  private timerEl: HTMLDivElement;
   private scoreEl: HTMLDivElement;
   private recipeCards: HTMLDivElement[] = [];
   private notificationEl: HTMLDivElement;
@@ -13,12 +14,22 @@ export class HUD {
     this.root = document.createElement('div');
     this.root.id = 'hud';
 
+    // Game timer (top-center)
+    const timerWrap = document.createElement('div');
+    timerWrap.className = 'hud-timer-wrap';
+    this.timerEl = document.createElement('div');
+    this.timerEl.className = 'hud-timer';
+    timerWrap.appendChild(this.timerEl);
+    this.root.appendChild(timerWrap);
+
+    // Score (top-right)
     this.scoreEl = document.createElement('div');
     this.scoreEl.className = 'hud-score';
     this.root.appendChild(this.scoreEl);
 
-    const recipesRow = document.createElement('div');
-    recipesRow.className = 'hud-recipes-row';
+    // Recipe cards (right side)
+    const recipesCol = document.createElement('div');
+    recipesCol.className = 'hud-recipes-col';
 
     for (let i = 0; i < 3; i++) {
       const card = document.createElement('div');
@@ -28,12 +39,13 @@ export class HUD {
         <div class="hud-recipe-name"></div>
         <div class="hud-ingredients"></div>
       `;
-      recipesRow.appendChild(card);
+      recipesCol.appendChild(card);
       this.recipeCards.push(card);
     }
 
-    this.root.appendChild(recipesRow);
+    this.root.appendChild(recipesCol);
 
+    // Toast notification
     this.notificationEl = document.createElement('div');
     this.notificationEl.className = 'hud-notification';
     this.notificationEl.style.opacity = '0';
@@ -74,8 +86,14 @@ export class HUD {
   }
 
   sync(state: GameState): void {
-    this.scoreEl.textContent = `Score: ${state.score}`;
+    // Game timer
+    this.timerEl.textContent = this.formatTime(state.timeRemaining);
+    this.timerEl.classList.toggle('hud-timer-warning', state.timeRemaining <= 30);
 
+    // Score
+    this.scoreEl.textContent = `${state.score}`;
+
+    // Recipe cards
     for (let i = 0; i < 3; i++) {
       const card = this.recipeCards[i];
       const ar: ActiveRecipe | undefined = state.activeRecipes[i];

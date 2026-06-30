@@ -47,6 +47,7 @@ const STATION_MODEL_FILES: Partial<Record<StationType, string>> = {
   lettuceBarrel: '/models/crate_lettuce.gltf',
   cheeseBarrel: '/models/crate_cheese.gltf',
   stove: '/models/stove_single_countertop.gltf',
+  trash: '/models/bin/Trashcan.glb',
 };
 
 /**

@@ -30,11 +30,11 @@ import type { StationType } from './types';
 export const KITCHEN_LAYOUT: string[] = [
   'C C S S S C C',
   'M . . . . . C',
-  'U . P C P . D',
+  'U . P C C . D',
   'L . C C C . D',
-  'H . P C C . C',
+  'H . C C P . C',
   'C . . . . . C',
-  'C X X X T C C',
+  'C X X C T C C',
 ];
 
 /** The one char that means walkable floor. Everything else is a station. */

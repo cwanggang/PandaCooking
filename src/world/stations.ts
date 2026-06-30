@@ -90,6 +90,11 @@ export function interactWithStation(
         player.heldItem = null;
         return { message: `added ${held.food} to plate` };
       }
+      if (held?.kind === 'plate' && onCounter?.kind === 'food') {
+        cell.heldItem = { kind: 'plate', contents: [onCounter.food] };
+        player.heldItem = null;
+        return { message: `placed plate under ${onCounter.food}` };
+      }
       if (held !== null && onCounter === null) {
         cell.heldItem = held;
         player.heldItem = null;
@@ -161,8 +166,7 @@ export function interactWithStation(
         }
       }
 
-      player.heldItem = null;
-      return { message: 'Wrong ingredients! Plate discarded.' };
+      return { message: 'Wrong ingredients! Throw it in the trash.' };
     }
 
     case 'trash': {

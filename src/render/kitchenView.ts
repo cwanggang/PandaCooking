@@ -26,6 +26,7 @@ const COUNTER_HEIGHT = 0.5;
 const COUNTER_TOP_PROPS: Partial<Record<StationType, PropType>> = {
   dishrack: 'dishrack',
   cuttingBoard: 'cuttingboard',
+  stove: 'pan',
 };
 
 /**
@@ -51,6 +52,10 @@ const STATION_COLORS: Record<StationType, number> = {
 export class KitchenView {
   /** A group holding all kitchen meshes, added to the scene as one unit. */
   readonly root: THREE.Group;
+
+  private trashMesh: THREE.Object3D | null = null;
+  private trashBaseScale = 1;
+  private trashOpenT = 0; // seconds remaining in the "open" animation
 
   constructor(
     grid: Grid,
@@ -142,43 +147,21 @@ export class KitchenView {
         return;
       }
 
-      // Trash: custom bin-like shape — shorter body + a rim ring at the top.
-      if (cell.station === 'trash') {
-        const bodyH = COUNTER_HEIGHT * 0.85;
-        const bodyGeo = new THREE.BoxGeometry(CELL_SIZE * 0.85, bodyH, CELL_SIZE * 0.85);
-        const body = new THREE.Mesh(bodyGeo, materialFor('trash'));
-        body.position.set(x, bodyH / 2, z);
-        body.castShadow = true;
-        body.receiveShadow = true;
-        this.root.add(body);
-
-        const rimGeo = new THREE.BoxGeometry(CELL_SIZE * 0.92, 0.06, CELL_SIZE * 0.92);
-        const rim = new THREE.Mesh(rimGeo, materialFor('trash'));
-        rim.position.set(x, bodyH + 0.03, z);
-        rim.castShadow = true;
-        this.root.add(rim);
-
-        // Dark interior circle (looks like open lid)
-        const lid = new THREE.Mesh(
-          new THREE.CircleGeometry(CELL_SIZE * 0.38, 16),
-          new THREE.MeshStandardMaterial({ color: 0x1a1a1a, side: THREE.DoubleSide }),
-        );
-        lid.rotation.x = -Math.PI / 2;
-        lid.position.set(x, bodyH + 0.04, z);
-        this.root.add(lid);
-
-        return;
-      }
-
       // Prefer a real KayKit prop; fall back to the colored box for stations
       // that don't have a model yet. Both are placed by their base on y=0.
       const model = models.get(cell.station);
       if (model) {
-        // Clone so every cell of the same station gets its own instance sharing
-        // the model's geometry/materials. Models are normalized with base at
-        // y=0 (see models.ts), so we only set x/z.
         const prop = model.clone();
         prop.position.set(x, 0, z);
+
+        // Trash can: render smaller, keep reference for animations
+        if (cell.station === 'trash') {
+          prop.scale.multiplyScalar(0.5);
+          this.trashBaseScale = prop.scale.x;
+          prop.position.y = 0.05;
+          this.trashMesh = prop;
+        }
+
         this.root.add(prop);
         return;
       }
@@ -186,59 +169,29 @@ export class KitchenView {
       addBox(cell.station, x, z);
     });
 
-    // --- Tile grid overlay (TEMPORARY visualization) ----------------------
-    // Thin white lines outlining each walkable floor tile so we can see the
-    // 5x4 interior. Remove this one line (and buildFloorGrid below) later.
-    this.root.add(this.buildFloorGrid(grid));
-
     scene.add(this.root);
   }
 
-  /**
-   * Build white grid lines outlining each floor tile. Derived from the bounding
-   * box of the floor cells (not hardcoded), so editing the layout keeps it
-   * correct. TEMPORARY visualization aid — safe to delete later.
-   */
-  private buildFloorGrid(grid: Grid): THREE.LineSegments {
-    // Find the rectangular span of floor cells.
-    let minCol = Infinity;
-    let maxCol = -Infinity;
-    let minRow = Infinity;
-    let maxRow = -Infinity;
-    grid.forEach((cell) => {
-      if (cell.type !== 'floor') return;
-      minCol = Math.min(minCol, cell.pos.col);
-      maxCol = Math.max(maxCol, cell.pos.col);
-      minRow = Math.min(minRow, cell.pos.row);
-      maxRow = Math.max(maxRow, cell.pos.row);
-    });
-
-    // A cell boundary at index i sits at world coord (i - count/2). (Cell
-    // centers are at i + 0.5 - count/2, so the edge before it is i - count/2.)
-    const xAt = (col: number): number => col - grid.cols / 2;
-    const zAt = (row: number): number => row - grid.rows / 2;
-
-    const y = 0.02; // float just above the floor to avoid z-fighting
-    const points: THREE.Vector3[] = [];
-
-    // Vertical lines (constant x): one at every column boundary, spanning the
-    // full height of the floor region.
-    for (let col = minCol; col <= maxCol + 1; col++) {
-      points.push(new THREE.Vector3(xAt(col), y, zAt(minRow)));
-      points.push(new THREE.Vector3(xAt(col), y, zAt(maxRow + 1)));
-    }
-    // Horizontal lines (constant z): one at every row boundary.
-    for (let row = minRow; row <= maxRow + 1; row++) {
-      points.push(new THREE.Vector3(xAt(minCol), y, zAt(row)));
-      points.push(new THREE.Vector3(xAt(maxCol + 1), y, zAt(row)));
-    }
-
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    // Note: line width is always 1px in WebGL regardless of any setting, so we
-    // keep it simple — plain white lines.
-    return new THREE.LineSegments(
-      geo,
-      new THREE.LineBasicMaterial({ color: 0xffffff }),
-    );
+  /** Trigger the trash can "open" animation (scale pop). */
+  animateTrash(): void {
+    this.trashOpenT = 0.3;
   }
+
+  /** Advance trash animation by dt seconds. */
+  update(dt: number): void {
+    if (!this.trashMesh) return;
+
+    // Idle gentle bob
+    this.trashMesh.position.y = Math.sin(performance.now() / 400) * 0.015;
+
+    // Open animation: quick scale pulse
+    if (this.trashOpenT > 0) {
+      this.trashOpenT -= dt;
+      const t = this.trashOpenT / 0.3;
+      const pop = 1 + Math.sin(t * Math.PI) * 0.15;
+      this.trashMesh.scale.setScalar(this.trashBaseScale * pop);
+    }
+  }
+
+
 }
