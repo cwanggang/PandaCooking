@@ -23,6 +23,13 @@ import { CELL_SIZE } from '../world/coords';
  * carrot reads at a sensible scale held in hand or sitting on a counter. */
 const ITEM_SIZE = 0.5;
 
+/** Per-item largest-dimension overrides (world units). Items absent here use
+ * ITEM_SIZE. The raw egg is authored tall, so shrink it so it doesn't tower
+ * over the other ingredients. */
+const ITEM_SIZE_OVERRIDES: Partial<Record<ItemModelType, number>> = {
+  eggUncooked: 0.3,
+};
+
 /**
  * The renderable item atoms: every food, the plate, and the two bun halves. The
  * world's `Item` (food | plate-with-contents) is composed from these by
@@ -142,7 +149,7 @@ export async function loadItemModels(): Promise<ItemModels> {
   await Promise.all(
     entries.map(async ([item, url]) => {
       const gltf = await loader.loadAsync(url);
-      models.set(item, normalizeItem(gltf.scene));
+      models.set(item, normalizeItem(gltf.scene, ITEM_SIZE_OVERRIDES[item] ?? ITEM_SIZE));
     }),
   );
 
